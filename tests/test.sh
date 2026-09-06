@@ -197,6 +197,20 @@ check_eq "vim -> EDITOR=vim"     "export EDITOR='vim'"  "$(grep '^export EDITOR=
 rm -rf "$zhome"
 
 
+echo "== nftables ruleset + --firewall-lan =="
+# ALLOW_SSH/SSH_PORT are consumed by the sourced _nftables_ruleset.
+# shellcheck disable=SC2034
+{ ALLOW_SSH=true; SSH_PORT=22; }
+# Prefix-assign FIREWALL_LAN per call (visible to the function, shellcheck-clean).
+_nft() { FIREWALL_LAN="$1" _nftables_ruleset; }
+check_eq "strict: ssh rule present"      1 "$(_nft false | grep -c 'tcp dport 22 accept')"
+check_eq "strict: no mDNS"               0 "$(_nft false | grep -c 'dport 5353')"
+check_eq "lan: mDNS present"             1 "$(_nft true  | grep -c 'udp dport 5353')"
+check_eq "lan: SSDP present"             1 "$(_nft true  | grep -c 'udp dport 1900')"
+check_eq "lan: KDE Connect (tcp+udp)"    2 "$(_nft true  | grep -c '1714-1764')"
+check_eq "lan: input still default-deny" 1 "$(_nft true  | grep -c 'hook input priority filter; policy drop')"
+
+
 echo "== detect_multilib =="
 # DISTRO_PROFILE is consumed by the sourced detect_multilib; ShellCheck can't see across it.
 # shellcheck disable=SC2034

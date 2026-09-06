@@ -112,6 +112,19 @@ flag then **overrides** it (defaults are applied first, your flags win).
 | surface + log minimization | - | - | - | - | - | ✓ |
 | shell + fonts + desktop | - | ✓ | - | - | - | - |
 
+**Desktop and the firewall.** The `desktop` profile ships **without** a firewall by
+default, because the strict default-deny ruleset would block local-network discovery
+(mDNS/avahi, KDE Connect, printers, casting). Firewall strictness is decoupled from the
+profile, so a desktop user who wants one just adds it, at either level:
+
+```bash
+# Desktop with a strict, server-grade firewall (hardening)
+sudo ./gentoo-post-install.sh --profile desktop --firewall nftables
+
+# Desktop with a LAN-friendly firewall (keeps mDNS / KDE Connect / printers working)
+sudo ./gentoo-post-install.sh --profile desktop --firewall nftables --firewall-lan
+```
+
 **Hardened vs freer** is just a profile choice, and you can fine-tune either way:
 
 ```bash
@@ -176,6 +189,7 @@ See `./gentoo-post-install.sh --help` for the full list. Highlights:
 --sysctl-harden         Apply sysctl network/kernel hardening
 --hardened-malloc       Install sys-libs/hardened_malloc (opt-in)
 --firewall <backend>    nftables | iptables | ufw | none
+--firewall-lan          Also allow local discovery (mDNS/SSDP/KDE Connect)
 --ssh-harden            Hardened sshd_config.d drop-in (validated first)
 --ssh-key-only          sshd: PasswordAuthentication no (need a key!)
 --audit / --fail2ban    Install audit+logging / fail2ban (sshd jail)

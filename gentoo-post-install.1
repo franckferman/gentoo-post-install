@@ -1,5 +1,5 @@
 .\" Manpage for gentoo-post-install.
-.TH GENTOO-POST-INSTALL 1 "2026-09-06" "gentoo-post-install 1.0.0" "User Commands"
+.TH GENTOO-POST-INSTALL 1 "2026-09-06" "gentoo-post-install 1.1.0" "User Commands"
 .SH NAME
 gentoo\-post\-install \- post\-install automation for Gentoo Linux
 .SH SYNOPSIS
@@ -163,6 +163,9 @@ Also apply IPv6 hardening knobs.
 .TP
 .B \-\-firewall \fInftables\fR|\fIiptables\fR|\fIufw\fR|\fInone\fR
 Configure a default\-deny firewall (default backend: nftables).
+.TP
+.B \-\-firewall\-lan
+Also allow local-network discovery (mDNS 5353, SSDP/DLNA 1900, KDE Connect 1714\-1764) on top of the default\-deny firewall. Desktop-friendly; composable with any backend.
 .TP
 .B \-\-no\-ssh\-rule
 Do not auto\-allow SSH in the firewall (risk of lockout).

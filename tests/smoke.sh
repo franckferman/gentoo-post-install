@@ -22,6 +22,7 @@ RUNS=(
   "desktop-sway|--de sway --dm greetd --display wayland --editor neovim --shell"
   "opsec-full|--profile opsec --minimize-surface --logs ephemeral --firewall nftables --ssh-harden --ssh-key-only --ssh-port 2222 --usbguard --apparmor"
   "server-iptables|--profile server --firewall iptables --binhost --no-sync --hardened-malloc"
+  "desktop-fw-lan|--profile desktop --firewall nftables --firewall-lan --de kde --dm sddm"
   "steps-subset|--steps 2,6,8,21 --sysctl-harden --harden-ipv6"
 )
 

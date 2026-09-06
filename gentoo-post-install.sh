@@ -15,7 +15,7 @@ Companion projects:
 Author  : Franck FERMAN
 Created : 04/09/2026
 Updated : 04/09/2026
-Version : 1.0.0
+Version : 1.1.0
 '
 
 set -o pipefail
@@ -23,7 +23,7 @@ set -o pipefail
 # ==============================================
 # CONSTANTS
 # ==============================================
-readonly SCRIPT_VERSION="1.0.0"
+readonly SCRIPT_VERSION="1.1.0"
 readonly SCRIPT_NAME="Gentoo Post-Installation Script"
 
 readonly EXIT_SUCCESS=0
@@ -126,6 +126,7 @@ INSTALL_MICROCODE=false      # CPU microcode (Intel: intel-microcode; AMD: linux
 CONFIGURE_FIREWALL=false
 FIREWALL="nftables"          # nftables | iptables | ufw | none
 ALLOW_SSH=true               # keep an SSH allow rule so remote boxes don't lock out
+FIREWALL_LAN=false            # --firewall-lan: also allow local discovery (mDNS/SSDP/KDE Connect)
 
 # sysctl / kernel hardening
 HARDEN_SYSCTL=false
@@ -355,6 +356,7 @@ HARDENING:
     --sysctl-harden         Apply sysctl network/kernel hardening drop-in
     --harden-ipv6           Also apply IPv6 hardening knobs
     --firewall <backend>    nftables | iptables | ufw | none  (default: nftables)
+    --firewall-lan          Also allow local discovery (mDNS/SSDP/KDE Connect) - desktop-friendly
     --no-ssh-rule           Do NOT auto-allow SSH in the firewall (risk of lockout)
     --ssh-harden            Write a hardened sshd_config.d drop-in
     --ssh-port <N>          SSH port (firewall allow + sshd Port); default 22
@@ -572,6 +574,7 @@ parse_args() {
             --sysctl-harden) HARDEN_SYSCTL=true ;;
             --harden-ipv6) HARDEN_IPV6=true ;;
             --firewall) shift; case "$1" in nftables|iptables|ufw|none) FIREWALL="$1"; CONFIGURE_FIREWALL=true; [[ "$1" == none ]] && CONFIGURE_FIREWALL=false ;; *) die "--firewall expects nftables|iptables|ufw|none" "$EXIT_USAGE" ;; esac ;;
+            --firewall-lan) FIREWALL_LAN=true ;;
             --no-ssh-rule) ALLOW_SSH=false ;;
             --ssh-harden) HARDEN_SSH=true ;;
             --ssh-port) shift; [[ "$1" =~ ^[0-9]+$ ]] || die "--ssh-port expects a number" "$EXIT_USAGE"; SSH_PORT="$1"; HARDEN_SSH=true ;;
@@ -1380,15 +1383,16 @@ EOF
     log_ok "Step 08 complete."
 }
 
-_fw_nftables() {
-    emerge_install net-firewall/nftables || { log_err "nftables install failed."; return 1; }
-    local ssh_rule=""
+_nftables_ruleset() {
+    # Emit the managed nftables ruleset (pure, no side effects, so it is testable).
+    # Default-deny inbound; established/lo/icmp always allowed; SSH unless --no-ssh-rule;
+    # local-discovery ports (mDNS/SSDP/KDE Connect) added when --firewall-lan is set.
+    local ssh_rule="" lan_rules=""
     $ALLOW_SSH && ssh_rule="        tcp dport ${SSH_PORT} accept comment \"ssh\""
-    # Back up an existing ruleset before replacing it (no silent data loss).
-    if ! $DRY_RUN && [[ -f /etc/nftables.conf && ! -f /etc/nftables.conf.gpi.bak ]]; then
-        run_priv cp -a /etc/nftables.conf /etc/nftables.conf.gpi.bak && log_ok "Backed up /etc/nftables.conf -> .gpi.bak"
+    if $FIREWALL_LAN; then
+        lan_rules=$'        udp dport 5353 accept comment "mDNS"\n        udp dport 1900 accept comment "SSDP/DLNA"\n        tcp dport 1714-1764 accept comment "KDE Connect"\n        udp dport 1714-1764 accept comment "KDE Connect"'
     fi
-    write_root_file /etc/nftables.conf <<EOF
+    cat <<EOF
 #!/usr/sbin/nft -f
 # Managed by gentoo-post-install - default-deny inbound firewall.
 flush ruleset
@@ -1402,6 +1406,7 @@ table inet filter {
         ip protocol icmp accept
         ip6 nexthdr icmpv6 accept
 ${ssh_rule}
+${lan_rules}
     }
     chain forward {
         type filter hook forward priority filter; policy drop;
@@ -1411,6 +1416,16 @@ ${ssh_rule}
     }
 }
 EOF
+}
+
+_fw_nftables() {
+    emerge_install net-firewall/nftables || { log_err "nftables install failed."; return 1; }
+    # Back up an existing ruleset before replacing it (no silent data loss).
+    if ! $DRY_RUN && [[ -f /etc/nftables.conf && ! -f /etc/nftables.conf.gpi.bak ]]; then
+        run_priv cp -a /etc/nftables.conf /etc/nftables.conf.gpi.bak && log_ok "Backed up /etc/nftables.conf -> .gpi.bak"
+    fi
+    _nftables_ruleset | write_root_file /etc/nftables.conf
+    $FIREWALL_LAN && log_info "LAN-friendly rules added (mDNS 5353, SSDP 1900, KDE Connect 1714-1764)."
     if ! $DRY_RUN; then
         if run_priv nft -c -f /etc/nftables.conf; then
             run_priv nft -f /etc/nftables.conf || log_warn "Applying nftables ruleset failed."
@@ -1438,6 +1453,12 @@ _fw_iptables() {
         run_priv iptables -A INPUT -i lo -j ACCEPT
         run_priv iptables -A INPUT -p icmp -j ACCEPT
         $ALLOW_SSH && run_priv iptables -A INPUT -p tcp --dport "$SSH_PORT" -j ACCEPT
+        if $FIREWALL_LAN; then
+            run_priv iptables -A INPUT -p udp --dport 5353 -j ACCEPT
+            run_priv iptables -A INPUT -p udp --dport 1900 -j ACCEPT
+            run_priv iptables -A INPUT -p tcp --dport 1714:1764 -j ACCEPT
+            run_priv iptables -A INPUT -p udp --dport 1714:1764 -j ACCEPT
+        fi
         run_priv iptables -P INPUT DROP
         run_priv iptables -P FORWARD DROP
         run_priv iptables -P OUTPUT ACCEPT
@@ -1452,6 +1473,12 @@ _fw_ufw() {
     run_priv ufw default deny incoming
     run_priv ufw default allow outgoing
     $ALLOW_SSH && run_priv ufw allow "${SSH_PORT}/tcp"
+    if $FIREWALL_LAN; then
+        run_priv ufw allow 5353/udp
+        run_priv ufw allow 1900/udp
+        run_priv ufw allow 1714:1764/tcp
+        run_priv ufw allow 1714:1764/udp
+    fi
     if $ASSUME_YES || confirm "Enable ufw now (SSH is allowed above to avoid lockout)?"; then
         run_priv ufw --force enable
     else
