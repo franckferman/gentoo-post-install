@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gentoo-post-install - Portage configuration, hardening &amp; tooling for Gentoo.</title>
+<meta name="description" content="Post-install automation for Gentoo Linux: Portage configuration, binhost, world maintenance, hardening, and a desktop/shell stack. OpenRC and systemd.">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Light palette (default) */
+:root {
+  --bg: #faf9fd; --bg2: #ffffff; --bg3: #f1eefa; --border: #e2ddf0;
+  --text: #1c1826; --muted: #5f5872; --dim: #8c86a0;
+  --accent: #7c3aed; --accent2: #9d5cff; --accent-ink: #ffffff;
+  --green: #178a54; --warnbg: #fff4e5; --warnbd: #f0b24b; --warnink: #7a4d10;
+  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --shadow: 0 1px 2px rgba(28,24,38,.06), 0 8px 24px rgba(28,24,38,.05);
+}
+/* Dark palette */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0810; --bg2: #12101a; --bg3: #1a1726; --border: #2c2740;
+    --text: #e8e3f3; --muted: #9a92b0; --dim: #5b5470;
+    --accent: #b98cff; --accent2: #7c5cff; --accent-ink: #0b0810;
+    --green: #6ee7a8; --warnbg: rgba(240,160,75,.08); --warnbd: rgba(240,160,75,.35); --warnink: #f4c896;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.65; }
+::selection { background: rgba(124,92,255,.28); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+
+/* Header */
+header { text-align: center; padding: 92px 20px 60px; background: radial-gradient(1200px 420px at 50% -100px, rgba(124,92,255,.16), transparent); border-bottom: 1px solid var(--border); }
+.logo { font-size: 62px; line-height: 1; }
+h1 { font-size: 42px; letter-spacing: -.02em; margin: 18px 0 8px; }
+h1 .g { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.tagline { color: var(--muted); font-size: 18px; max-width: 640px; margin: 0 auto 24px; }
+.badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 26px; }
+.badge { font-family: var(--mono); font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; background: var(--bg2); }
+.cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.cta { display: inline-flex; gap: 8px; align-items: center; background: linear-gradient(90deg, var(--accent2), var(--accent)); color: var(--accent-ink); font-weight: 700; padding: 12px 22px; border-radius: 10px; }
+.cta.secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+
+/* Sections */
+section { padding: 58px 0; border-bottom: 1px solid var(--border); }
+.overline { text-transform: uppercase; letter-spacing: .18em; font-size: 12px; color: var(--accent); font-weight: 700; margin-bottom: 10px; }
+h2 { font-size: 26px; margin-bottom: 22px; letter-spacing: -.01em; }
+h3.grouptitle { font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 26px 0 12px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
+.card h3 { font-size: 16px; margin-bottom: 6px; }
+.card p { color: var(--muted); font-size: 14px; }
+
+pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px; color: var(--text); box-shadow: var(--shadow); }
+pre .c { color: var(--dim); }
+pre .p { color: var(--accent); }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--bg2); }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+th { color: var(--muted); font-weight: 600; background: var(--bg3); }
+td.wrap-ok, th.wrap-ok { white-space: normal; }
+code, .kbd { font-family: var(--mono); font-size: 12.5px; background: var(--bg3); padding: 1px 6px; border-radius: 5px; }
+
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.step { display: flex; gap: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.step .n { font-family: var(--mono); font-weight: 700; color: var(--accent); font-size: 13px; min-width: 22px; }
+.step .b { font-size: 14px; }
+.step .b b { font-weight: 600; }
+.step .b span { color: var(--muted); }
+
+.warn { background: var(--warnbg); border: 1px solid var(--warnbd); border-radius: 10px; padding: 14px 16px; color: var(--warnink); font-size: 14px; }
+ul.reqs { list-style: none; display: grid; gap: 8px; }
+ul.reqs li { color: var(--muted); font-size: 14px; padding-left: 22px; position: relative; }
+ul.reqs li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+
+footer { text-align: center; padding: 44px 20px; color: var(--dim); font-size: 13px; }
+
+/* Sticky nav */
+nav.top { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(10px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--border); }
+nav.top .wrap { display: flex; align-items: center; gap: 18px; height: 54px; }
+nav.top .brand { font-weight: 700; font-size: 15px; }
+nav.top .brand .g { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+nav.top .links { margin-left: auto; display: flex; gap: 18px; align-items: center; }
+nav.top .links a { color: var(--muted); font-size: 14px; }
+nav.top .links a:hover { color: var(--text); text-decoration: none; }
+nav.top .links a.gh { color: var(--text); font-weight: 600; }
+@media (max-width: 640px){ nav.top .links a:not(.gh){ display:none; } }
+
+/* Hero version pill */
+.pill { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 12px; color: var(--accent); border: 1px solid var(--border); background: var(--bg2); border-radius: 999px; padding: 5px 13px; margin-bottom: 20px; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+/* FAQ */
+.faq details { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 4px 18px; margin-bottom: 10px; }
+.faq summary { cursor: pointer; padding: 14px 0; font-weight: 600; font-size: 15px; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: '+'; color: var(--accent); font-size: 20px; font-weight: 400; }
+.faq details[open] summary::after { content: '\2212'; }
+.faq details p { color: var(--muted); font-size: 14.5px; padding: 0 0 16px; margin: 0; }
+
+/* Footer CTA */
+.ctabig { text-align: center; padding: 72px 20px; background: radial-gradient(900px 300px at 50% 120%, rgba(124,92,255,.16), transparent); }
+.ctabig h2 { font-size: 28px; margin-bottom: 10px; }
+.ctabig p { color: var(--muted); margin-bottom: 24px; }
+
+/* Fade-in on scroll */
+.fade { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+.fade.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce){ .fade { opacity: 1; transform: none; transition: none; } }
+</style>
+</head>
+<body>
+<nav class="top">
+  <div class="wrap">
+    <span class="brand">🐧 <span class="g">gentoo</span>-post-install</span>
+    <span class="links">
+      <a href="#why">Why</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#steps">Steps</a>
+      <a href="#faq">FAQ</a>
+      <a class="gh" href="https://github.com/franckferman/gentoo-post-install">GitHub →</a>
+    </span>
+  </div>
+</nav>
+<header>
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span> v1.0.0 · 23 steps · OpenRC + systemd</span>
+    <div class="logo">🐧</div>
+    <h1><span class="g">gentoo</span>-post-install</h1>
+    <p class="tagline">Portage configuration, hardening &amp; tooling automation for Gentoo Linux - profile-based, idempotent, OpenRC <em>and</em> systemd.</p>
+    <div class="badges">
+      <span class="badge">bash</span>
+      <span class="badge">OpenRC + systemd</span>
+      <span class="badge">binhost-ready</span>
+      <span class="badge">overlays + native apps</span>
+      <span class="badge">kernel + opsec + sysops</span>
+      <span class="badge">shellcheck-clean</span>
+      <span class="badge">AGPL-3.0</span>
+    </div>
+    <div class="cta-row">
+      <a class="cta" href="https://github.com/franckferman/gentoo-post-install">View on GitHub →</a>
+      <a class="cta secondary" href="#quickstart">Quick start</a>
+    </div>
+  </div>
+</header>
+
+<!-- WHY -->
+<section id="why">
+  <div class="wrap">
+    <div class="overline">Why</div>
+    <h2>Gentoo deserves its own post-install</h2>
+    <div class="grid">
+      <div class="card"><h3>⚙️ Portage configuration</h3><p>Auto <code>MAKEOPTS</code> (cores capped by RAM), <code>COMMON_FLAGS</code>, <code>CPU_FLAGS_X86</code> via cpuid2cpuflags, sane <code>FEATURES</code>.</p></div>
+      <div class="card"><h3>📦 Binary packages</h3><p>Opt-in official Gentoo binhost with signature trust - turn a source distro into fast installs when you want them.</p></div>
+      <div class="card"><h3>🔁 World maintenance</h3><p>Sync, news, <code>@world</code> update, preserved-rebuild and depclean - the routine, done right.</p></div>
+      <div class="card"><h3>🛡️ Hardening</h3><p>sysctl drop-in, default-deny firewall (nftables/iptables/ufw, SSH-safe), hardened OpenSSH, audit, fail2ban, AppArmor.</p></div>
+      <div class="card"><h3>🖥️ Desktop &amp; shell</h3><p><code>VIDEO_CARDS</code> autodetect, Xorg/Wayland, PipeWire, NetworkManager, zsh + powerlevel10k, Nerd Fonts.</p></div>
+      <div class="card"><h3>↩️ Reversible</h3><p>Dry-run, idempotent steps, automatic <code>make.conf</code> backup, marked drop-ins, and a one-command <code>--rollback</code>.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- QUICK START -->
+<section id="quickstart">
+  <div class="wrap">
+    <div class="overline">Quick start</div>
+    <h2>Get going in three lines</h2>
+    <div class="warn">⚠️ This changes system config. Read the script, run <code>--dry-run</code> first, and review Portage news.</div>
+    <br>
+<pre><span class="c"># Download</span>
+curl -O https://raw.githubusercontent.com/franckferman/gentoo-post-install/stable/gentoo-post-install.sh
+chmod +x gentoo-post-install.sh
+
+<span class="c"># Preview - no changes made</span>
+sudo ./gentoo-post-install.sh <span class="p">--dry-run</span>
+
+<span class="c"># Desktop workstation, non-interactive, with binhost</span>
+sudo ./gentoo-post-install.sh <span class="p">--profile</span> desktop <span class="p">--binhost</span> <span class="p">-y</span></pre>
+  </div>
+</section>
+
+<!-- PROFILES -->
+<section>
+  <div class="wrap">
+    <div class="overline">Profiles</div>
+    <h2>One flag sets sensible defaults</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Profile</th><th>march</th><th>Firewall</th><th>Hardening</th><th>Shell/Desktop</th><th class="wrap-ok">Use case</th></tr></thead>
+        <tbody>
+          <tr><td><code>default</code></td><td>native</td><td>-</td><td>-</td><td>-</td><td class="wrap-ok">Balanced baseline</td></tr>
+          <tr><td><code>desktop</code></td><td>native</td><td>-</td><td>-</td><td>shell + fonts + desktop</td><td class="wrap-ok">Workstation</td></tr>
+          <tr><td><code>server</code></td><td>native</td><td>nftables</td><td>sysctl + SSH + audit + fail2ban</td><td>-</td><td class="wrap-ok">Headless server</td></tr>
+          <tr><td><code>hardened</code></td><td>native</td><td>nftables</td><td>+ IPv6 + SSH key-only + AppArmor</td><td>-</td><td class="wrap-ok">Security-focused</td></tr>
+          <tr><td><code>minimal</code></td><td>native</td><td>-</td><td>-</td><td>-</td><td class="wrap-ok">Lean essentials</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- STEPS -->
+<section>
+  <div class="wrap">
+    <div class="overline">Steps</div>
+    <h2>23 steps, run all or pick with <code>--steps</code></h2>
+
+    <h3 class="grouptitle">Portage</h3>
+    <div class="steps">
+      <div class="step"><span class="n">01</span><span class="b"><b>Sync &amp; news</b> <span>- emerge --sync (eix-sync / webrsync fallback) + Portage news</span></span></div>
+      <div class="step"><span class="n">02</span><span class="b"><b>Portage config</b> <span>- MAKEOPTS, COMMON_FLAGS, EMERGE_DEFAULT_OPTS, FEATURES, CPU flags</span></span></div>
+      <div class="step"><span class="n">03</span><span class="b"><b>Binhost</b> <span>- configure the Gentoo binary package host (opt-in)</span></span></div>
+      <div class="step"><span class="n">04</span><span class="b"><b>Tooling</b> <span>- gentoolkit, eix, portage-utils, genlop, mirrorselect</span></span></div>
+      <div class="step"><span class="n">05</span><span class="b"><b>World update</b> <span>- @world update, preserved-rebuild, depclean</span></span></div>
+      <div class="step"><span class="n">06</span><span class="b"><b>USE flags</b> <span>- reviewable global USE baseline per profile</span></span></div>
+      <div class="step"><span class="n">07</span><span class="b"><b>Kernel</b> <span>- distribution kernel + firmware (opt-in)</span></span></div>
+    </div>
+
+    <h3 class="grouptitle">Hardening</h3>
+    <div class="steps">
+      <div class="step"><span class="n">08</span><span class="b"><b>sysctl</b> <span>- network/kernel hardening drop-in (IPv6 optional)</span></span></div>
+      <div class="step"><span class="n">09</span><span class="b"><b>Firewall</b> <span>- default-deny: nftables / iptables / ufw (SSH-safe)</span></span></div>
+      <div class="step"><span class="n">10</span><span class="b"><b>SSH</b> <span>- hardened sshd_config.d drop-in, validated with sshd -t</span></span></div>
+    </div>
+
+    <h3 class="grouptitle">Services &amp; monitoring</h3>
+    <div class="steps">
+      <div class="step"><span class="n">11</span><span class="b"><b>Audit &amp; logging</b> <span>- sys-process/audit + a system logger (journald-aware)</span></span></div>
+      <div class="step"><span class="n">12</span><span class="b"><b>fail2ban</b> <span>- sshd jail (systemd/openrc backend)</span></span></div>
+      <div class="step"><span class="n">13</span><span class="b"><b>USBGuard</b> <span>- policy from connected devices (opt-in)</span></span></div>
+      <div class="step"><span class="n">14</span><span class="b"><b>AppArmor</b> <span>- install + enable + LSM guidance (opt-in)</span></span></div>
+    </div>
+
+    <h3 class="grouptitle">Shell &amp; desktop</h3>
+    <div class="steps">
+      <div class="step"><span class="n">15</span><span class="b"><b>Shell</b> <span>- zsh + oh-my-zsh + powerlevel10k + plugins, vim/neovim, Portage aliases</span></span></div>
+      <div class="step"><span class="n">16</span><span class="b"><b>Nerd Fonts</b> <span>- patched fonts for your user + fc-cache</span></span></div>
+      <div class="step"><span class="n">17</span><span class="b"><b>Desktop</b> <span>- VIDEO_CARDS/INPUT_DEVICES autodetect, Xorg/Wayland, dbus/elogind, PipeWire, NetworkManager</span></span></div>
+    </div>
+
+    <h3 class="grouptitle">Applications &amp; desktop environment (native)</h3>
+    <div class="steps">
+      <div class="step"><span class="n">18</span><span class="b"><b>Overlays</b> <span>- enable ebuild repos via eselect-repository (guru, pentoo, ...)</span></span></div>
+      <div class="step"><span class="n">19</span><span class="b"><b>Applications</b> <span>- native apps by name (overlay auto-enabled) + native Steam</span></span></div>
+      <div class="step"><span class="n">20</span><span class="b"><b>Desktop env.</b> <span>- KDE/GNOME/Sway/Hyprland/XFCE + display manager (sddm/gdm/…)</span></span></div>
+    </div>
+
+    <h3 class="grouptitle">Kernel · OPSEC · accounts</h3>
+    <div class="steps">
+      <div class="step"><span class="n">07</span><span class="b"><b>Kernel &amp; microcode</b> <span>- source (bin/dist/source/vanilla) × config (standard/hardened-KSPP/minimal/performance)</span></span></div>
+      <div class="step"><span class="n">21</span><span class="b"><b>Surface min.</b> <span>- module blacklist, kexec/coredumps off, tightened sysctl</span></span></div>
+      <div class="step"><span class="n">22</span><span class="b"><b>Log min.</b> <span>- journald volatile/retention, shell history off, dmesg (privacy)</span></span></div>
+      <div class="step"><span class="n">23</span><span class="b"><b>Accounts</b> <span>- users/groups/sudo + root lock; passwords via chpasswd stdin</span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FRESH INSTALL -->
+<section>
+  <div class="wrap">
+    <div class="overline">Fresh install → usable</div>
+    <h2>Bare Gentoo to a working desktop</h2>
+    <p style="color:var(--muted);margin-bottom:16px;font-size:15px">No Flatpak by default: apps come from Portage and overlays. Obsidian comes from the <code>r7l</code> overlay (auto-enabled); Discord and Signal are in the main Gentoo tree; Steam is native via <code>steam-overlay</code> (needs a multilib profile).</p>
+<pre><span class="c"># KDE desktop with apps, from a fresh install</span>
+sudo ./gentoo-post-install.sh <span class="p">--profile</span> desktop <span class="p">--de</span> kde <span class="p">--dm</span> sddm \
+     <span class="p">--apps</span> firefox,vlc,obsidian,keepassxc
+
+<span class="c"># Tiling Wayland + a ready-made app set</span>
+sudo ./gentoo-post-install.sh <span class="p">--de</span> sway <span class="p">--apps-profile</span> daily
+
+<span class="c"># Gaming box: native Steam + Discord</span>
+sudo ./gentoo-post-install.sh <span class="p">--apps-profile</span> gaming <span class="p">--steam</span>
+
+<span class="c"># Discover what's available</span>
+./gentoo-post-install.sh <span class="p">--list-apps</span>
+./gentoo-post-install.sh <span class="p">--list-overlays</span></pre>
+  </div>
+</section>
+
+<!-- HARDENING -->
+<section>
+  <div class="wrap">
+    <div class="overline">Hardening</div>
+    <h2>Safe by construction</h2>
+    <div class="grid">
+      <div class="card"><h3>🧱 Firewall, no lockout</h3><p>Default-deny inbound with an SSH allow rule by default. nftables rulesets are validated with <code>nft -c</code> before apply; iptables adds accept rules <em>before</em> switching the policy to DROP.</p></div>
+      <div class="card"><h3>🔑 SSH</h3><p>Modern KEX/ciphers/MACs, <code>MaxAuthTries</code>, agent/TCP forwarding off. The drop-in is validated with <code>sshd -t</code> and only restarted after you confirm.</p></div>
+      <div class="card"><h3>🧮 sysctl</h3><p>rp_filter, redirects off, syncookies, <code>kptr_restrict</code>, <code>dmesg_restrict</code>, Yama ptrace scope, protected symlinks/hardlinks/fifos.</p></div>
+      <div class="card"><h3>🛰️ Detection &amp; MAC</h3><p>auditd + system logging, fail2ban sshd jail, optional USBGuard and AppArmor with the kernel LSM cmdline spelled out.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- OPTIONS -->
+<section>
+  <div class="wrap">
+    <div class="overline">Options</div>
+    <h2>Key flags</h2>
+<pre><span class="p">--profile</span> &lt;name&gt;        default | desktop | server | hardened | minimal
+<span class="p">--dry-run</span>, <span class="p">-n</span>           print actions without executing them
+<span class="p">--yes</span>, <span class="p">-y</span>               non-interactive
+<span class="p">--steps</span> &lt;list&gt;          run only selected steps (1,2,5 or 1-4)
+<span class="p">--log-file</span> &lt;path&gt;       tee a timestamped transcript
+<span class="p">--binhost</span>               enable the Gentoo binary package host
+<span class="p">--march</span> native|none     CPU baseline (default: native)
+<span class="p">--firewall</span> &lt;backend&gt;    nftables | iptables | ufw | none
+<span class="p">--ssh-harden</span>            hardened sshd_config.d drop-in
+<span class="p">--audit</span> / <span class="p">--fail2ban</span>  install audit+logging / fail2ban
+<span class="p">--usbguard</span> / <span class="p">--apparmor</span> opt-in USBGuard / AppArmor
+<span class="p">--shell</span> / <span class="p">--fonts</span>       zsh + powerlevel10k + editors / Nerd Fonts
+<span class="p">--desktop</span>               Xorg/Wayland + dbus/elogind + PipeWire + NM
+<span class="p">--rollback</span>              revert managed changes
+<span class="p">--list-steps</span>            list all steps and exit</pre>
+  </div>
+</section>
+
+<!-- ROLLBACK -->
+<section>
+  <div class="wrap">
+    <div class="overline">Undo</div>
+    <h2>One command to revert</h2>
+    <p style="color:var(--muted);margin-bottom:16px;font-size:15px">Every managed file carries a <code>gentoo-post-install</code> marker and <code>make.conf</code> is backed up before editing.</p>
+<pre>sudo ./gentoo-post-install.sh <span class="p">--rollback</span></pre>
+    <p style="color:var(--muted);margin-top:14px;font-size:14px">Restores <code>make.conf</code> and removes the managed drop-ins (CPU flags, USE baseline, sysctl, binhost, fail2ban jail, SSH drop-in). It deliberately does <b>not</b> uninstall packages, disable services, or touch <code>/etc/nftables.conf</code>.</p>
+  </div>
+</section>
+
+<!-- REQUIREMENTS -->
+<section>
+  <div class="wrap">
+    <div class="overline">Requirements</div>
+    <h2>What you need</h2>
+    <ul class="reqs">
+      <li>A Gentoo system with Portage (<code>emerge</code>) available</li>
+      <li>Root via <code>sudo</code>/<code>doas</code>, or <code>--allow-root</code></li>
+      <li>Network access for sync and package installs</li>
+      <li>Works on both OpenRC and systemd - detected automatically</li>
+    </ul>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="wrap">
+    <div class="overline">FAQ</div>
+    <h2>Questions, answered</h2>
+    <div class="faq">
+      <details><summary>Does it work on both OpenRC and systemd?</summary><p>Yes - the init system is detected and every service action is abstracted, so the same run drives <code>rc-update</code>/<code>rc-service</code> or <code>systemctl</code> automatically.</p></details>
+      <details><summary>Will it break my system?</summary><p>It is dry-run-first and idempotent: preview everything with <code>--dry-run</code>, <code>make.conf</code> is backed up before editing, managed files are marked, and a single <code>--rollback</code> reverts them. Nothing destructive runs without opt-in.</p></details>
+      <details><summary>Flatpak or native?</summary><p>Native by default. Apps come from Portage and overlays (via eselect-repository); Steam is native through the steam-overlay. Flatpak is only an optional escape hatch.</p></details>
+      <details><summary>Can I choose and harden my own kernel?</summary><p>Yes: pick the source (<code>bin/dist/source/vanilla</code>) and a config profile (<code>standard/hardened/minimal/performance</code>). Hardened uses the Gentoo KSPP toggle; lockdown and a KSPP cmdline are opt-in. A custom config can fail to boot, so the previous kernel is always kept.</p></details>
+      <details><summary>How are passwords handled?</summary><p>Always read from a masked prompt and applied via <code>chpasswd</code> on stdin - never in argv or a file. Every sudoers drop-in is validated with <code>visudo -c</code>, and <code>--disable-root</code> refuses to run without a non-root admin.</p></details>
+      <details><summary>Is it tested?</summary><p>Static analysis (ShellCheck), a 72-check unit suite (mocked commands), a 30-check fake-root integration suite (real writes to a temp tree), a 9-check dry-run smoke matrix, and a dry-run of every profile all pass in CI - plus an optional isolated QEMU boot-test. Real end-to-end execution on live hardware is yours to validate - start with <code>--dry-run</code>.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER CTA -->
+<div class="ctabig">
+  <div class="wrap">
+    <h2>From stage3 to a system that's <em>yours</em>.</h2>
+    <p>Read the script, preview it, run what you want.</p>
+    <div class="cta-row">
+      <a class="cta" href="https://github.com/franckferman/gentoo-post-install">Get it on GitHub →</a>
+      <a class="cta secondary" href="#quickstart">Quick start</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    Made by <a href="https://github.com/franckferman">Franck FERMAN</a> · AGPL-3.0 ·
+    <a href="https://github.com/franckferman/gentoo-post-install">gentoo-post-install</a>
+  </div>
+</footer>
+
+<script>
+  const io = new IntersectionObserver((es) => {
+    for (const e of es) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }, { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('section .wrap, .ctabig .wrap').forEach((el) => { el.classList.add('fade'); io.observe(el); });
+</script>
+</body>
+</html>

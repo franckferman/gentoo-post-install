@@ -1,0 +1,12 @@
+# Local artifacts
+*.log
+*.bak
+*.orig
+*.tmp
+.DS_Store
+# Test / scratch
+/tmp/
+/.scratch/
+# Internal working notes (not published)
+CLAUDE.md
+PLAN.md

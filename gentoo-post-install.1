@@ -1,0 +1,335 @@
+.\" Manpage for gentoo-post-install.
+.TH GENTOO-POST-INSTALL 1 "2026-09-06" "gentoo-post-install 1.0.0" "User Commands"
+.SH NAME
+gentoo\-post\-install \- post\-install automation for Gentoo Linux
+.SH SYNOPSIS
+.B gentoo-post-install.sh
+.RI [ OPTIONS ]
+.br
+.B sudo ./gentoo-post-install.sh
+.B \-\-profile
+.I desktop
+.SH DESCRIPTION
+.B gentoo-post-install
+automates post\-installation configuration for Gentoo Linux: Portage configuration
+.RB ( make.conf ,
+USE flags, binary package host), world maintenance, tooling, security
+hardening, and an optional desktop/shell stack. It detects and drives both
+.B OpenRC
+and
+.B systemd
+and is idempotent, with a dry\-run mode and automatic backups.
+.PP
+Steps are numbered and can be selected individually with
+.BR \-\-steps .
+Most system\-changing actions are opt\-in via flags or a
+.BR \-\-profile .
+.SH PROFILES
+.TP
+.B \-\-profile \fIname\fR
+One of
+.BR default ", " desktop ", " server ", " hardened ", " minimal ", " opsec .
+A profile sets sensible defaults that individual flags can still override.
+.SH OPTIONS
+.SS General
+.TP
+.B \-h, \-\-help
+Show help and exit.
+.TP
+.B \-v, \-\-version
+Show version and exit.
+.TP
+.B \-y, \-\-yes
+Assume "yes" to all prompts (non\-interactive).
+.TP
+.B \-n, \-\-dry\-run
+Print actions without executing them.
+.TP
+.B \-\-allow\-root
+Permit running directly as root without sudo.
+.TP
+.B \-\-no\-banner
+Do not print the ASCII banner.
+.TP
+.B \-\-no\-emoji
+Use ASCII status markers instead of emojis.
+.TP
+.B \-\-log\-file \fIpath\fR
+Tee a timestamped transcript to
+.IR path .
+.TP
+.B \-\-steps \fIlist\fR
+Run only these steps, e.g.
+.B \-\-steps 1,2,5
+or
+.BR "\-\-steps 1-4" .
+.TP
+.B \-\-list\-steps
+List all available steps and exit.
+.TP
+.B \-\-list\-apps
+List the known application names (for \fB\-\-apps\fR) and exit.
+.TP
+.B \-\-list\-overlays
+List popular overlays (for \fB\-\-overlay\fR) and exit.
+.TP
+.B \-\-rollback
+Revert managed changes: restore
+.I make.conf
+from backup and remove managed drop\-in files (marked by this tool).
+.SS Portage configuration
+.TP
+.B \-\-no\-tune
+Do not modify
+.IR /etc/portage/make.conf .
+.TP
+.B \-\-march \fInative\fR|\fInone\fR
+CPU baseline (default: native).
+.TP
+.B \-\-jobs \fIN\fR
+Force MAKEOPTS
+.BR \-j N
+(default: auto from cores capped by RAM).
+.TP
+.B \-\-accept\-license \fIdefault\fR|\fIfree\fR|\fIredist\fR|\fIall\fR
+Set ACCEPT_LICENSE handling. \fIredist\fR = \fB@FREE @BINARY-REDISTRIBUTABLE\fR
+(firmware), the desktop-profile default.
+.TP
+.B \-\-no\-cpu\-flags
+Do not compute CPU_FLAGS_X86 via cpuid2cpuflags.
+.SS Binary packages
+.TP
+.B \-\-binhost
+Enable the Gentoo binary package host (getbinpkg).
+.TP
+.B \-\-binhost\-uri \fIuri\fR
+Override the binhost sync\-uri.
+.SS Maintenance
+.TP
+.B \-\-no\-sync
+Skip the Portage tree sync.
+.TP
+.B \-\-no\-world\-update
+Skip
+.BR "emerge -uUDN @world" .
+.TP
+.B \-\-no\-depclean
+Skip
+.BR "emerge --depclean" .
+.TP
+.B \-\-mirrors
+Pick the fastest GENTOO_MIRRORS with mirrorselect before syncing.
+.TP
+.B \-\-merge\-config
+Run \fBdispatch-conf\fR at the end to merge pending config-file updates.
+.SS Kernel
+.TP
+.B \-\-install\-kernel
+Install a distribution kernel (sys\-kernel/gentoo\-kernel\-bin).
+.TP
+.B \-\-kernel\-pkg \fIatom\fR
+Override the kernel package atom.
+.TP
+.B \-\-bootloader \fIgrub\fR|\fIsystemd\-boot\fR|\fInone\fR
+Bootloader wiring (sets the matching \fBinstallkernel\fR USE flag).
+.TP
+.B \-\-initramfs \fIdracut\fR|\fInone\fR
+Initramfs generator (sets the \fBdracut\fR USE flag on installkernel).
+.TP
+.B \-\-kernel\-source \fIbin\fR|\fIdist\fR|\fIsource\fR|\fIvanilla\fR
+Package: gentoo-kernel-bin, gentoo-kernel, gentoo-sources, vanilla-sources.
+.TP
+.B \-\-kernel\-config \fIstandard\fR|\fIhardened\fR|\fIminimal\fR|\fIperformance\fR
+Config profile (config.d fragments; hardened = KSPP; minimal = localmodconfig).
+.TP
+.B \-\-kernel\-lockdown
+Enable the lockdown LSM (needs signed modules or a monolithic kernel).
+.TP
+.B \-\-kernel\-cmdline\-harden
+Add KSPP parameters to the bootloader kernel command line.
+.TP
+.B \-\-kernel\-manual
+Leave configuration to menuconfig (no auto\-build).
+.TP
+.B \-\-microcode
+Install CPU microcode (Intel intel\-microcode; AMD via linux\-firmware).
+.SS Hardening
+.TP
+.B \-\-sysctl\-harden
+Apply the sysctl network/kernel hardening drop\-in.
+.TP
+.B \-\-harden\-ipv6
+Also apply IPv6 hardening knobs.
+.TP
+.B \-\-firewall \fInftables\fR|\fIiptables\fR|\fIufw\fR|\fInone\fR
+Configure a default\-deny firewall (default backend: nftables).
+.TP
+.B \-\-no\-ssh\-rule
+Do not auto\-allow SSH in the firewall (risk of lockout).
+.TP
+.B \-\-ssh\-harden
+Write a hardened sshd_config.d drop\-in (validated with
+.BR "sshd -t" ).
+.TP
+.B \-\-ssh\-port \fIN\fR
+SSH port for the firewall allow rule and sshd.
+.TP
+.B \-\-ssh\-no\-root
+sshd: PermitRootLogin no.
+.TP
+.B \-\-ssh\-key\-only
+sshd: PasswordAuthentication no (a working key must exist first).
+.TP
+.B \-\-minimize\-surface
+Blacklist risky modules, disable kexec/coredumps, tighten sysctl, mask services.
+.TP
+.B \-\-logs \fIoff\fR|\fIreduce\fR|\fIephemeral\fR
+Minimize the log footprint (journald, shell history, dmesg).
+.SS Services and monitoring
+.TP
+.B \-\-audit ", " \-\-no\-audit
+Install (or skip) sys\-process/audit plus a system logger.
+.TP
+.B \-\-fail2ban ", " \-\-no\-fail2ban
+Install (or skip) fail2ban with an sshd jail.
+.TP
+.B \-\-usbguard
+Install USBGuard (opt\-in; can lock out USB input devices).
+.TP
+.B \-\-apparmor
+Install and enable AppArmor (needs kernel LSM support).
+.TP
+.B \-\-hardened\-malloc
+Install the hardened userspace allocator (sys\-libs/hardened_malloc, opt\-in).
+.SS Shell and terminal
+.TP
+.B \-\-shell
+Install zsh + oh\-my\-zsh + powerlevel10k + plugins.
+.TP
+.B \-\-no\-shell
+Skip the shell setup.
+.TP
+.B \-\-shell\-user \fIname\fR
+Configure for this user (default: the invoking sudo/current user).
+.TP
+.B \-\-editor \fIvim\fR|\fIneovim\fR|\fIboth\fR|\fInone\fR
+Editor(s) to install (default: both).
+.TP
+.B \-\-no\-chsh
+Do not change the user's default shell to zsh.
+.SS Fonts and desktop
+.TP
+.B \-\-fonts
+Install Nerd Fonts for the target user.
+.TP
+.B \-\-no\-fonts
+Skip Nerd Fonts.
+.TP
+.B \-\-nerd\-fonts \fIlist\fR
+Comma/space list of Nerd Fonts to install.
+.TP
+.B \-\-desktop
+Install a desktop stack (Xorg, dbus/elogind, PipeWire, NetworkManager).
+.TP
+.B \-\-display \fIx11\fR|\fIwayland\fR|\fIboth\fR
+Display server selection (default: x11).
+.TP
+.B \-\-no\-audio ", " \-\-no\-nm
+Skip PipeWire / NetworkManager.
+.TP
+.B \-\-video\-cards \fIvalue\fR
+Set VIDEO_CARDS manually (skip autodetection).
+.SS Repositories, applications and desktop
+.TP
+.B \-\-overlay \fIlist\fR
+Enable official overlays (guru,pentoo) via eselect\-repository, or add a
+custom one as \fIname=git-url\fR.
+.TP
+.B \-\-apps \fIlist\fR
+Install apps by name (firefox,vlc,obsidian,...) or raw atom; the app's overlay
+is auto\-enabled as needed.
+.TP
+.B \-\-apps\-profile \fIdaily\fR|\fIdev\fR|\fImedia\fR|\fIgaming\fR
+Install a ready\-made application set.
+.TP
+.B \-\-steam
+Install native Steam (steam\-overlay, requires a multilib profile).
+.TP
+.B \-\-de \fIkde\fR|\fIgnome\fR|\fIsway\fR|\fIhyprland\fR|\fIxfce\fR|\fInone\fR
+Install a desktop environment.
+.TP
+.B \-\-dm \fIsddm\fR|\fIgdm\fR|\fIlightdm\fR|\fIgreetd\fR|\fInone\fR|\fIauto\fR
+Install and enable a display manager (default: per\-DE).
+.SS Accounts
+Passwords are read from a masked prompt and applied via
+.BR chpasswd (8)
+on stdin - never in argv.
+.TP
+.B \-\-root\-password
+Set root's password.
+.TP
+.B \-\-disable\-root
+Lock root (refused unless a non\-root wheel member exists).
+.TP
+.B \-\-group \fIname\fR
+Create a group (repeatable).
+.TP
+.B \-\-user \fIspec\fR
+Create/adjust a user (repeatable). \fIspec\fR is
+\fBname[:sudo][:nopasswd][:groups=a,b][:shell=/bin/bash]\fR;
+\fB:sudo\fR adds wheel + sudoers, \fB:nopasswd\fR grants NOPASSWD sudo (warned).
+.SH EXAMPLES
+.TP
+Preview the full run without making changes:
+.B sudo ./gentoo-post-install.sh --dry-run
+.TP
+Desktop workstation, non\-interactive, with the binhost:
+.B sudo ./gentoo-post-install.sh --profile desktop --binhost -y
+.TP
+Fresh install to a usable KDE desktop with apps:
+.B sudo ./gentoo-post-install.sh --profile desktop --de kde --apps firefox,vlc,obsidian
+.TP
+Only tune make.conf and install tooling:
+.B sudo ./gentoo-post-install.sh --steps 2,4
+.TP
+Revert everything this tool changed:
+.B sudo ./gentoo-post-install.sh --rollback
+.TP
+Opsec box with an admin user and root locked:
+.B sudo ./gentoo-post-install.sh --profile opsec --user 'admin:sudo' --disable-root
+.TP
+Hardened distribution kernel:
+.B sudo ./gentoo-post-install.sh --install-kernel --kernel-source dist --kernel-config hardened
+.SH FILES
+.TP
+.I /etc/portage/make.conf
+Tuned in place; a backup is written to
+.IR /etc/portage/make.conf.gpi.bak .
+.TP
+.I /etc/portage/package.use/00cpu-flags, /etc/portage/package.use/10-baseline
+Managed CPU flags and USE baseline.
+.TP
+.I /etc/sysctl.d/99-gentoo-post-install.conf
+Managed sysctl hardening.
+.TP
+.I /etc/ssh/sshd_config.d/99-gentoo-post-install.conf
+Managed SSH hardening drop\-in.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+One or more steps failed, or a runtime error.
+.TP
+.B 2
+Usage error (bad option or argument).
+.SH SEE ALSO
+.BR emerge (1),
+.BR make.conf (5),
+.BR portage (5),
+.BR nft (8),
+.BR sshd_config (5)
+.SH AUTHOR
+Franck FERMAN.
+Project: https://github.com/franckferman/gentoo-post-install

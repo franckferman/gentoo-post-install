@@ -1,0 +1,8 @@
+# ShellCheck configuration for gentoo-post-install
+#
+# SC2317 (command appears unreachable): disabled repo-wide. The script dispatches
+# its step_NN_* functions indirectly by name from STEP_REGISTRY (run_selected_steps
+# calls "$fn"), so ShellCheck's static reachability analysis cannot see those calls
+# and flags every step body - and everything they transitively call - as unreachable.
+# The code IS reached at runtime; this is a known false positive for indirect dispatch.
+disable=SC2317

@@ -1,0 +1,44 @@
+# Deploy the docs/ site (docs/index.html) to GitHub Pages.
+#
+# NOTE: GitHub Pages must be enabled for the repository (Settings → Pages →
+# "Build and deployment" → Source: GitHub Actions). On a PRIVATE repo that needs
+# a plan that includes Pages; on a public repo it is available by default. Until
+# then this workflow is MANUAL only (workflow_dispatch) so it does not fail on
+# every push. Once Pages is enabled, run it from the Actions tab - or add the
+# `push:` trigger back below.
+name: Deploy static content to Pages
+
+on:
+  push:
+    branches: ["stable"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
