@@ -134,7 +134,7 @@ nav.top .links a.gh { color: var(--text); font-weight: 600; }
 </nav>
 <header>
   <div class="wrap">
-    <span class="pill"><span class="dot"></span> v1.1.0 · 23 steps · OpenRC + systemd</span>
+    <span class="pill"><span class="dot"></span> v1.2.0 · 23 steps · OpenRC + systemd</span>
     <div class="logo">🐧</div>
     <h1><span class="g">gentoo</span>-post-install</h1>
     <p class="tagline">Portage configuration, hardening &amp; tooling automation for Gentoo Linux - profile-based, idempotent, OpenRC <em>and</em> systemd.</p>
@@ -315,6 +315,7 @@ sudo ./gentoo-post-install.sh <span class="p">--apps-profile</span> gaming <span
 <span class="p">--march</span> native|none     CPU baseline (default: native)
 <span class="p">--firewall</span> &lt;backend&gt;    nftables | iptables | ufw | none
 <span class="p">--firewall-lan</span>          also allow local discovery (mDNS/SSDP/KDE Connect)
+<span class="p">--secure-boot</span>           sign kernel + bootloader (sbctl); enrollment is manual
 <span class="p">--ssh-harden</span>            hardened sshd_config.d drop-in
 <span class="p">--audit</span> / <span class="p">--fail2ban</span>  install audit+logging / fail2ban
 <span class="p">--usbguard</span> / <span class="p">--apparmor</span> opt-in USBGuard / AppArmor

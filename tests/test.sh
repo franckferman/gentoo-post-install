@@ -211,6 +211,13 @@ check_eq "lan: KDE Connect (tcp+udp)"    2 "$(_nft true  | grep -c '1714-1764')"
 check_eq "lan: input still default-deny" 1 "$(_nft true  | grep -c 'hook input priority filter; policy drop')"
 
 
+echo "== secure boot helpers =="
+check_eq "--secure-boot sets flag" true "$( parse_args --secure-boot >/dev/null 2>&1; echo "$SECURE_BOOT" )"
+bootctl() { echo "/boot/efi"; }   # mock systemd bootctl -p
+check_eq "_find_esp via bootctl"   "/boot/efi" "$(_find_esp)"
+unset -f bootctl
+
+
 echo "== detect_multilib =="
 # DISTRO_PROFILE is consumed by the sourced detect_multilib; ShellCheck can't see across it.
 # shellcheck disable=SC2034

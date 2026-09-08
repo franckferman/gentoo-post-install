@@ -14,7 +14,7 @@ SCRIPT="${HERE}/../gentoo-post-install.sh"
 
 # Each entry: a label, then the args. All run with --dry-run --yes --no-banner.
 RUNS=(
-  "kernel-hardened|--install-kernel --kernel-source dist --kernel-config hardened --kernel-lockdown --kernel-cmdline-harden --bootloader grub --initramfs dracut --microcode"
+  "kernel-hardened|--install-kernel --kernel-source dist --kernel-config hardened --kernel-lockdown --kernel-cmdline-harden --bootloader grub --initramfs dracut --microcode --secure-boot"
   "kernel-bin-perf|--install-kernel --kernel-source bin --kernel-config performance --bootloader systemd-boot"
   "kernel-source-minimal|--install-kernel --kernel-source source --kernel-config minimal --kernel-manual"
   "accounts|--user alice:sudo:groups=audio,video:shell=/bin/zsh --user bob:sudo:nopasswd --group devs --root-password --disable-root"

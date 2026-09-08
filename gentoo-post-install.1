@@ -1,5 +1,5 @@
 .\" Manpage for gentoo-post-install.
-.TH GENTOO-POST-INSTALL 1 "2026-09-06" "gentoo-post-install 1.1.0" "User Commands"
+.TH GENTOO-POST-INSTALL 1 "2026-09-06" "gentoo-post-install 1.2.0" "User Commands"
 .SH NAME
 gentoo\-post\-install \- post\-install automation for Gentoo Linux
 .SH SYNOPSIS
@@ -147,6 +147,9 @@ Enable the lockdown LSM (needs signed modules or a monolithic kernel).
 .TP
 .B \-\-kernel\-cmdline\-harden
 Add KSPP parameters to the bootloader kernel command line.
+.TP
+.B \-\-secure\-boot
+Set up Secure Boot with app-crypt/sbctl: create keys (if absent) and sign the bootloader and kernel images. Key ENROLLMENT is left as a guided manual step (writing UEFI key stores can make the machine unbootable), and the tool prints the exact commands.
 .TP
 .B \-\-kernel\-manual
 Leave configuration to menuconfig (no auto\-build).

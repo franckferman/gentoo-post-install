@@ -15,7 +15,7 @@ Companion projects:
 Author  : Franck FERMAN
 Created : 04/09/2026
 Updated : 04/09/2026
-Version : 1.1.0
+Version : 1.2.0
 '
 
 set -o pipefail
@@ -23,7 +23,7 @@ set -o pipefail
 # ==============================================
 # CONSTANTS
 # ==============================================
-readonly SCRIPT_VERSION="1.1.0"
+readonly SCRIPT_VERSION="1.2.0"
 readonly SCRIPT_NAME="Gentoo Post-Installation Script"
 
 readonly EXIT_SUCCESS=0
@@ -121,6 +121,7 @@ KERNEL_MANUAL=false          # opt-in: leave configuration to menuconfig (no aut
 BOOTLOADER="grub"            # grub | systemd-boot | none  (sets installkernel USE)
 INITRAMFS="dracut"           # dracut | none              (sets installkernel USE)
 INSTALL_MICROCODE=false      # CPU microcode (Intel: intel-microcode; AMD: linux-firmware)
+SECURE_BOOT=false            # --secure-boot: sign kernel+bootloader with sbctl (enrollment is manual/guided)
 
 # Firewall
 CONFIGURE_FIREWALL=false
@@ -347,6 +348,7 @@ KERNEL:
                             (hardened = KSPP; minimal = localmodconfig on source)
     --kernel-lockdown       Enable lockdown LSM (needs signed modules / monolithic!)
     --kernel-cmdline-harden Add KSPP parameters to the bootloader kernel cmdline
+    --secure-boot           Sign kernel + bootloader with sbctl (enroll keys manually; guided)
     --kernel-manual         Leave configuration to menuconfig (no auto-build)
     --bootloader <b>        grub | systemd-boot | none  (installkernel USE; default grub)
     --initramfs <i>         dracut | none               (installkernel USE; default dracut)
@@ -559,6 +561,7 @@ parse_args() {
             --kernel-source) shift; case "$1" in bin|dist|source|vanilla) KERNEL_SOURCE="$1"; INSTALL_KERNEL=true ;; *) die "--kernel-source expects bin|dist|source|vanilla" "$EXIT_USAGE" ;; esac ;;
             --kernel-config) shift; case "$1" in standard|hardened|minimal|performance) KERNEL_CONFIG="$1"; INSTALL_KERNEL=true ;; *) die "--kernel-config expects standard|hardened|minimal|performance" "$EXIT_USAGE" ;; esac ;;
             --kernel-lockdown) KERNEL_LOCKDOWN=true ;;
+            --secure-boot) SECURE_BOOT=true ;;
             --kernel-cmdline-harden) KERNEL_CMDLINE_HARDEN=true ;;
             --kernel-manual) KERNEL_MANUAL=true ;;
             --bootloader) shift; case "$1" in grub|systemd-boot|none) BOOTLOADER="$1" ;; *) die "--bootloader expects grub|systemd-boot|none" "$EXIT_USAGE" ;; esac ;;
@@ -1232,14 +1235,69 @@ _install_microcode() {
     esac
 }
 
+_find_esp() {
+    # Print the EFI System Partition mount point: prefer bootctl (systemd), then the
+    # usual mounts, else /boot. Kept small so it is unit-testable with a mocked bootctl.
+    local p
+    if have bootctl; then
+        p="$(bootctl -p 2>/dev/null)" && [[ -n "$p" ]] && { echo "$p"; return 0; }
+    fi
+    for p in /efi /boot/efi /boot; do
+        [[ -d "$p/EFI" ]] && { echo "$p"; return 0; }
+    done
+    echo /boot
+}
+
+_secure_boot_setup() {
+    # Opt-in Secure Boot via app-crypt/sbctl. The tool AUTOMATES key creation and the
+    # SIGNING of the bootloader + kernels; it deliberately does NOT enroll keys, because
+    # writing UEFI key stores can make the machine unbootable if the firmware rejects
+    # them. Enrollment is printed as a guided manual step. Fully --dry-run aware.
+    $SECURE_BOOT || return 0
+    log_section "Secure Boot (sbctl)"
+    emerge_install app-crypt/sbctl || { log_err "sbctl install failed."; return 1; }
+    local esp; esp="$(_find_esp)"
+    log_info "EFI System Partition: ${esp}"
+    if $DRY_RUN; then
+        echo "    ${ICON_SKIP} [dry-run] sbctl create-keys (if absent)"
+        echo "    ${ICON_SKIP} [dry-run] sbctl sign -s <bootloader in ${esp} + kernels in /boot>"
+        echo "    ${ICON_SKIP} [dry-run] (manual) sbctl enroll-keys --microsoft"
+        return 0
+    fi
+    log_warn "Secure Boot uses your OWN keys. Enrolling them writes UEFI NVRAM and can make the"
+    log_warn "machine unbootable if the firmware rejects them - so enrollment is left MANUAL below."
+    # 1) Create signing keys if none exist yet.
+    if ! run_priv sbctl status 2>/dev/null | grep -qiE 'installed:[[:space:]]*(yes|sbctl)'; then
+        run_priv sbctl create-keys || log_warn "sbctl create-keys failed."
+    fi
+    # 2) Sign the bootloader + kernel images that exist (best-effort).
+    local f signed=0
+    for f in \
+        "${esp}/EFI/gentoo/grubx64.efi" "${esp}/EFI/GRUB/grubx64.efi" \
+        "${esp}/EFI/systemd/systemd-bootx64.efi" "${esp}/EFI/BOOT/BOOTX64.EFI" \
+        /boot/vmlinuz-*; do
+        [[ -e "$f" ]] || continue
+        if run_priv sbctl sign -s "$f"; then signed=$((signed + 1)); log_ok "signed ${f}"; fi
+    done
+    [[ "$signed" -eq 0 ]] && log_warn "No EFI binaries found under ${esp} or /boot - sign manually: sbctl sign -s <file>"
+    run_priv sbctl verify 2>/dev/null || true
+    # 3) Enrollment: guided, never automated.
+    log_warn "Finish Secure Boot deliberately, with a rescue USB ready:"
+    log_warn "  1) Put the firmware in 'Setup Mode' (clear Secure Boot keys in the BIOS)."
+    log_warn "  2) sudo sbctl enroll-keys --microsoft   # keep MS keys so option ROMs/other OSes still boot"
+    log_warn "  3) Re-enable Secure Boot, reboot, and verify with: sbctl status"
+    log_warn "  After kernel updates, re-sign with: sudo sbctl sign-all"
+}
+
 step_07_kernel() {
     log_section "Step 07 - Kernel & microcode"
-    if ! $INSTALL_KERNEL && ! $INSTALL_MICROCODE; then
-        log_skip "Kernel/microcode skipped (--install-kernel and/or --microcode)."
+    if ! $INSTALL_KERNEL && ! $INSTALL_MICROCODE && ! $SECURE_BOOT; then
+        log_skip "Kernel/microcode skipped (--install-kernel and/or --microcode / --secure-boot)."
         return 0
     fi
     if ! $INSTALL_KERNEL; then
         $INSTALL_MICROCODE && _install_microcode
+        _secure_boot_setup
         log_ok "Step 07 complete."
         return 0
     fi
@@ -1303,6 +1361,7 @@ step_07_kernel() {
 
     $KERNEL_CMDLINE_HARDEN && _kernel_harden_cmdline
     $INSTALL_MICROCODE && _install_microcode
+    _secure_boot_setup
     log_ok "Step 07 complete."
 }
 

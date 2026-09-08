@@ -212,6 +212,7 @@ See `./gentoo-post-install.sh --help` for the full list. Highlights:
 --kernel-source <s>     bin | dist | source | vanilla
 --kernel-config <c>     standard | hardened | minimal | performance
 --kernel-lockdown / --kernel-cmdline-harden / --kernel-manual / --microcode
+--secure-boot           Sign kernel + bootloader with sbctl (key enrollment stays manual)
 --minimize-surface      Attack-surface reduction (modules, kexec, sysctl, services)
 --logs <level>          off | reduce | ephemeral
 --root-password / --disable-root
@@ -260,6 +261,13 @@ Sources: `bin` (gentoo-kernel-bin), `dist` (gentoo-kernel), `source` (gentoo-sou
 `--kernel-manual` / `localmodconfig`), `vanilla`. Configs: `standard | hardened | minimal
 | performance`. Config fragments land in `/etc/kernel/config.d/`; hardened uses the Gentoo
 KSPP toggle. A custom config **can fail to boot**, so the previous kernel is always kept.
+
+**Secure Boot** (`--secure-boot`): installs `app-crypt/sbctl`, creates keys if absent,
+and **signs** the bootloader and kernel images. Key **enrollment is left as a guided
+manual step** (`sbctl enroll-keys --microsoft`) because writing UEFI key stores can make
+the machine unbootable if the firmware rejects them, so the tool prints the exact
+commands instead of running them. Pairs naturally with `--kernel-lockdown`. Re-sign after
+kernel updates with `sbctl sign-all`.
 
 **OPSEC & hardening**:
 

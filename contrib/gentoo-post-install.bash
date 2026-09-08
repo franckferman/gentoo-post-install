@@ -19,7 +19,7 @@ _gentoo_post_install() {
 --profile --no-tune --march --jobs --accept-license --no-cpu-flags \
 --binhost --binhost-uri --no-sync --no-world-update --no-depclean --mirrors --merge-config \
 --install-kernel --kernel-pkg --kernel-source --kernel-config --kernel-lockdown \
---kernel-cmdline-harden --kernel-manual --bootloader --initramfs --microcode \
+--kernel-cmdline-harden --kernel-manual --secure-boot --bootloader --initramfs --microcode \
 --sysctl-harden --harden-ipv6 --firewall --no-ssh-rule --ssh-harden --ssh-port \
 --ssh-no-root --ssh-key-only --hardened-malloc --minimize-surface --logs \
 --audit --no-audit --fail2ban --no-fail2ban --usbguard --apparmor \
