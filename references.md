@@ -105,6 +105,11 @@ on any value - Gentoo moves.
   [KSPP on Gentoo](https://wiki.gentoo.org/wiki/User:Pietinger/Tutorials/Kernel_Hardening_with_KSPP) ·
   [KSPP settings](https://kspp.github.io/Recommended_Settings.html) ·
   [Kernel/Configuration](https://wiki.gentoo.org/wiki/Kernel/Configuration)
+- **Secure Boot** (`--secure-boot`): `app-crypt/sbctl` creates keys and signs the
+  bootloader + kernel; enrollment (`sbctl enroll-keys --microsoft`, firmware in Setup
+  Mode) is left manual because it writes UEFI key stores. -
+  [Secure Boot](https://wiki.gentoo.org/wiki/Secure_Boot) ·
+  [sbctl](https://wiki.gentoo.org/wiki/Secure_Boot#Using_your_own_keys)
 
 ## Init systems
 - OpenRC (`rc-update` / `rc-service`) and systemd (`systemctl`) are both supported -
