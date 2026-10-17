@@ -1,8 +1,9 @@
 # Roadmap
 
-`gentoo-post-install` is feature-complete: 23 steps covering Portage,
-hardening, kernel, OPSEC, desktop, applications, and account management, with a full
-test gate (unit + integration + smoke + an optional QEMU boot-test; see the README).
+`gentoo-post-install` is feature-complete: 24 steps covering Portage,
+hardening, kernel, OPSEC, desktop, GPU drivers, applications, and account management,
+with a full test gate (unit + integration + smoke + an optional QEMU boot-test; see
+the README).
 
 The items below are optional future enhancements, not blockers. Ideas and contributions
 are welcome via issues.

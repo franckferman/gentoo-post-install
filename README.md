@@ -167,6 +167,7 @@ Run any subset with `--steps` (e.g. `--steps 1-4`, `--steps 2,6`). List them wit
 | 21 | Surface minimization | Blacklist risky modules, kexec/coredumps off, tighten sysctl (`--minimize-surface`) |
 | 22 | Log minimization | journald volatile/retention, shell history off, dmesg (`--logs reduce\|ephemeral`) |
 | 23 | Accounts | Users/groups/sudo + root password/lock, passwords via `chpasswd` stdin (`--user`, `--group`, `--root-password`, `--disable-root`) |
+| 24 | GPU drivers | Vendor-detected driver stack: `VIDEO_CARDS`, Mesa, Vulkan, VA-API, optional OpenCL/compute (Intel NEO / AMD rusticl / NVIDIA) (`--gpu`) |
 
 ## Options
 
@@ -199,6 +200,9 @@ See `./gentoo-post-install.sh --help` for the full list. Highlights:
 --fonts                 Install Nerd Fonts
 --desktop               Xorg/Wayland + dbus/elogind + PipeWire + NetworkManager
 --video-cards <value>   Override VIDEO_CARDS (skip autodetect)
+--gpu                   GPU driver stack: Mesa/Vulkan/VA-API + OpenCL (auto-detect vendor)
+--gpu-vendor <v>        auto | intel | amd | nvidia | nouveau | none
+--no-gpu-compute        Skip the OpenCL/compute stack (lighter; no hashcat accel)
 --overlay <list>        Enable overlays (guru,pentoo,...) or add name=git-url
 --apps <list>           Install apps (firefox,vlc,obsidian,...), overlay auto-enabled
 --apps-profile <p>      daily | dev | media | gaming

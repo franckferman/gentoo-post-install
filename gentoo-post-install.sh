@@ -14,8 +14,8 @@ Companion projects:
 
 Author  : Franck FERMAN
 Created : 04/09/2026
-Updated : 04/09/2026
-Version : 1.2.0
+Updated : 17/10/2026
+Version : 1.3.0
 '
 
 set -o pipefail
@@ -23,7 +23,7 @@ set -o pipefail
 # ==============================================
 # CONSTANTS
 # ==============================================
-readonly SCRIPT_VERSION="1.2.0"
+readonly SCRIPT_VERSION="1.3.0"
 readonly SCRIPT_NAME="Gentoo Post-Installation Script"
 
 readonly EXIT_SUCCESS=0
@@ -178,6 +178,13 @@ DESKTOP_DISPLAY="x11"          # x11 | wayland | both
 DESKTOP_AUDIO=true             # PipeWire
 DESKTOP_NM=true                # NetworkManager
 VIDEO_CARDS_OVERRIDE=""        # manual VIDEO_CARDS value (skips autodetect)
+
+# GPU / graphics drivers (step 24) - full driver stack, usable standalone from --desktop
+INSTALL_GPU=false
+GPU_VENDOR="auto"              # auto | intel | amd | nvidia | nouveau | none
+GPU_VULKAN=true                # install the Vulkan loader + the vendor ICD
+GPU_VAAPI=true                 # hardware video decode/encode (VA-API)
+GPU_COMPUTE=true               # OpenCL/compute stack (Intel NEO / AMD rusticl / NVIDIA via driver)
 
 # Overlays / repositories (native Gentoo way, via eselect-repository)
 OVERLAYS=""                    # space/comma list: "guru" (official) or "name=git-url" (custom)
@@ -401,6 +408,15 @@ FONTS & DESKTOP:
     --no-nm                 Skip NetworkManager
     --video-cards <value>   Set VIDEO_CARDS manually (skip autodetect)
 
+GPU / GRAPHICS DRIVERS:
+    --gpu                   Install the GPU driver stack (auto-detect the vendor)
+    --gpu-vendor <v>        auto | intel | amd | nvidia | nouveau | none
+                            (nvidia = proprietary x11-drivers/nvidia-drivers; nouveau = FOSS)
+    --no-gpu-vulkan         Do not install the Vulkan loader / ICD
+    --no-gpu-vaapi          Do not install hardware video decode (VA-API) drivers
+    --gpu-compute           Install the OpenCL/compute stack (default on with --gpu)
+    --no-gpu-compute        Skip the OpenCL/compute stack (lighter; no hashcat accel)
+
 REPOSITORIES (overlays, the native way):
     --overlay <list>        Enable official overlays (e.g. guru,pentoo) and/or add a
                             custom one as name=git-url (via eselect-repository)
@@ -461,6 +477,7 @@ STEP_REGISTRY=(
     "21|step_21_minimize_surface|Minimize attack surface (modules, kexec, coredumps)"
     "22|step_22_logs|Minimize log footprint (journald, history, dmesg)"
     "23|step_23_accounts|Users, groups, sudo, and root password/lock"
+    "24|step_24_gpu|Install GPU drivers (Mesa/Vulkan/VA-API + optional OpenCL; Intel/AMD/NVIDIA)"
 )
 
 list_steps() {
@@ -602,6 +619,14 @@ parse_args() {
             --no-audio) DESKTOP_AUDIO=false ;;
             --no-nm) DESKTOP_NM=false ;;
             --video-cards) shift; [[ $# -gt 0 ]] || die "--video-cards requires a value" "$EXIT_USAGE"; VIDEO_CARDS_OVERRIDE="$1" ;;
+            --gpu) INSTALL_GPU=true ;;
+            --gpu-vendor) shift; case "$1" in auto|intel|amd|nvidia|nouveau|none) GPU_VENDOR="$1"; INSTALL_GPU=true ;; *) die "--gpu-vendor expects auto|intel|amd|nvidia|nouveau|none" "$EXIT_USAGE" ;; esac ;;
+            --gpu-vulkan) GPU_VULKAN=true ;;
+            --no-gpu-vulkan) GPU_VULKAN=false ;;
+            --gpu-vaapi) GPU_VAAPI=true ;;
+            --no-gpu-vaapi) GPU_VAAPI=false ;;
+            --gpu-compute) GPU_COMPUTE=true; INSTALL_GPU=true ;;
+            --no-gpu-compute) GPU_COMPUTE=false ;;
             --overlay) shift; [[ $# -gt 0 ]] || die "--overlay requires a list" "$EXIT_USAGE"; OVERLAYS="${OVERLAYS:+$OVERLAYS }${1//,/ }" ;;
             --apps) shift; [[ $# -gt 0 ]] || die "--apps requires a list" "$EXIT_USAGE"; APPS="${APPS:+$APPS }${1//,/ }" ;;
             --apps-profile) shift; [[ $# -gt 0 ]] || die "--apps-profile requires a value" "$EXIT_USAGE"; APPS_PROFILE="$1" ;;
@@ -1900,8 +1925,9 @@ _detect_video_cards() {
     local vc="" gpu=""
     have lspci || return 0
     gpu="$(lspci 2>/dev/null | grep -iE 'vga|3d|display' || true)"
+    # Word boundaries matter: a bare 'ati' would match "VGA compatible controller".
     grep -qi 'intel' <<< "$gpu" && vc+=" intel"
-    grep -qiE 'amd|radeon|ati' <<< "$gpu" && vc+=" amdgpu radeonsi"
+    grep -qiE '\b(amd|ati|radeon)\b|advanced micro devices' <<< "$gpu" && vc+=" amdgpu radeonsi"
     grep -qi 'nvidia' <<< "$gpu" && vc+=" nouveau"   # FOSS driver by default
     echo "${vc# }"
 }
@@ -2455,6 +2481,138 @@ step_23_accounts() {
     log_ok "Step 23 complete."
 }
 
+_gpu_resolve_vendor() {
+    # Resolve GPU_VENDOR, expanding "auto" via lspci. Echoes: intel|amd|nvidia|nouveau|none.
+    # Pure (no installs/side effects) so it is safe to call in a command substitution.
+    local v="$GPU_VENDOR" gpu=""
+    if [[ "$v" == auto ]]; then
+        gpu="$(lspci 2>/dev/null | grep -iE 'vga|3d|display' || true)"
+        # Word boundaries matter: a bare 'ati' would match "VGA compatible controller".
+        if   grep -qi  'nvidia'                                      <<< "$gpu"; then v="nvidia"   # default: the proprietary driver
+        elif grep -qiE '\b(amd|ati|radeon)\b|advanced micro devices' <<< "$gpu"; then v="amd"
+        elif grep -qi  'intel'                                       <<< "$gpu"; then v="intel"
+        else v="none"; fi
+    fi
+    echo "$v"
+}
+
+step_24_gpu() {
+    log_section "Step 24 - GPU drivers"
+    if ! $INSTALL_GPU; then
+        log_skip "GPU driver setup disabled (--gpu to enable)."
+        return 0
+    fi
+
+    # lspci is needed for auto-detection; pull pciutils first (outside the resolver,
+    # so a dry-run's printed line can never be captured into the vendor string).
+    if [[ "$GPU_VENDOR" == auto ]] && ! have lspci; then
+        emerge_install sys-apps/pciutils || log_warn "Could not install pciutils for GPU autodetect."
+    fi
+
+    local vendor; vendor="$(_gpu_resolve_vendor)"
+    log_info "GPU vendor: ${vendor} (vulkan=${GPU_VULKAN} vaapi=${GPU_VAAPI} compute=${GPU_COMPUTE})"
+    if [[ "$vendor" == none ]]; then
+        log_warn "No GPU detected/selected - force one with --gpu-vendor intel|amd|nvidia|nouveau."
+        return 0
+    fi
+
+    # --- VIDEO_CARDS token(s) in make.conf (drives Mesa's per-driver build) ---
+    local vc=""
+    case "$vendor" in
+        intel)   vc="intel" ;;
+        amd)     vc="amdgpu radeonsi" ;;
+        nvidia)  vc="nvidia" ;;
+        nouveau) vc="nouveau" ;;
+    esac
+    [[ -n "$VIDEO_CARDS_OVERRIDE" ]] && vc="$VIDEO_CARDS_OVERRIDE"
+    make_conf_set "VIDEO_CARDS" "$vc"
+
+    # --- per-package USE needed by the stack (Mesa vulkan/vaapi/opencl) ---
+    local -a use_lines=("# Managed by gentoo-post-install - GPU stack USE flags")
+    case "$vendor" in
+        intel)
+            $GPU_VULKAN && use_lines+=("media-libs/mesa vulkan")
+            ;;
+        amd)
+            local mesa_use="vulkan"
+            $GPU_VAAPI   && mesa_use+=" vaapi"    # radeonsi VA-API comes from Mesa itself
+            $GPU_COMPUTE && mesa_use+=" opencl"   # rusticl OpenCL lives in Mesa
+            use_lines+=("media-libs/mesa ${mesa_use}")
+            ;;
+        nouveau)
+            $GPU_VULKAN && use_lines+=("media-libs/mesa vulkan")   # NVK (experimental)
+            ;;
+    esac
+    if [[ ${#use_lines[@]} -gt 1 ]]; then
+        printf '%s\n' "${use_lines[@]}" | write_root_file "${PKG_USE_DIR}/40-gpu"
+    fi
+    # AMD rusticl needs to know which Gallium driver to expose for OpenCL.
+    if [[ "$vendor" == amd && "$GPU_COMPUTE" == true ]]; then
+        make_conf_set "RUSTICL_ENABLE" "radeonsi"
+    fi
+
+    # --- NVIDIA proprietary: license, nouveau blacklist, DRM modeset (before emerge) ---
+    if [[ "$vendor" == nvidia ]]; then
+        log_warn "NVIDIA proprietary driver selected:"
+        log_warn "  - builds a kernel module (needs kernel sources / a dist-kernel) and a reboot;"
+        log_warn "  - validated by logic + tests, but NOT runtime-tested on this project's hardware."
+        write_root_file "${PKG_LICENSE_DIR}/gpi-gpu" <<'EOF'
+# Managed by gentoo-post-install
+x11-drivers/nvidia-drivers NVIDIA-r2
+EOF
+        write_root_file /etc/modprobe.d/gpi-nvidia.conf <<'EOF'
+# Managed by gentoo-post-install - NVIDIA proprietary driver
+blacklist nouveau
+options nouveau modeset=0
+options nvidia_drm modeset=1
+EOF
+    fi
+
+    # --- packages ---
+    local -a pkgs=()
+    # Mesa is the GL/Vulkan userspace for every vendor except the proprietary NVIDIA blob.
+    [[ "$vendor" != nvidia ]] && pkgs+=(media-libs/mesa)
+    $GPU_VULKAN && pkgs+=(media-libs/vulkan-loader dev-util/vulkan-tools)
+    pkgs+=(x11-apps/mesa-progs)   # glxinfo/eglinfo - handy to verify acceleration
+    case "$vendor" in
+        intel)
+            $GPU_VAAPI   && pkgs+=(media-libs/libva-intel-media-driver media-video/libva-utils)
+            $GPU_COMPUTE && pkgs+=(dev-libs/intel-compute-runtime dev-util/clinfo)
+            ;;
+        amd)
+            pkgs+=(sys-kernel/linux-firmware)   # amdgpu needs firmware blobs
+            $GPU_VAAPI   && pkgs+=(media-video/libva-utils)
+            $GPU_COMPUTE && pkgs+=(dev-util/clinfo)
+            ;;
+        nvidia)
+            pkgs+=(x11-drivers/nvidia-drivers)
+            $GPU_VAAPI   && pkgs+=(media-video/nvidia-vaapi-driver media-video/libva-utils)
+            $GPU_COMPUTE && pkgs+=(dev-util/clinfo)
+            ;;
+        nouveau)
+            pkgs+=(sys-kernel/linux-firmware)
+            $GPU_VAAPI && pkgs+=(media-video/libva-utils)
+            ;;
+    esac
+
+    log_info "Installing: ${pkgs[*]}"
+    emerge_install "${pkgs[@]}" || log_warn "Some GPU packages failed (check USE/keywords with dispatch-conf, then re-run)."
+
+    # Make nvidia the active GL provider once installed (best-effort).
+    if [[ "$vendor" == nvidia ]] && ! $DRY_RUN && have eselect; then
+        run_priv eselect opengl set nvidia >/dev/null 2>&1 || true
+    fi
+
+    # A VIDEO_CARDS change means the graphics stack must be rebuilt to pick up the driver.
+    log_warn "VIDEO_CARDS set to '${vc}' - rebuild affected packages: emerge -uUDN --newuse @world"
+    [[ "$vendor" == amd && "$GPU_COMPUTE" == true ]] && \
+        log_info "AMD compute uses Mesa rusticl (RUSTICL_ENABLE=radeonsi). For heavy GPGPU, add ROCm separately."
+    [[ "$vendor" == nvidia ]] && \
+        log_info "NVIDIA OpenCL/CUDA ships with the driver; the full CUDA toolkit (dev-util/nvidia-cuda-toolkit) is a separate opt-in."
+    log_info "Verify later:  glxinfo -B | grep renderer  |  vulkaninfo --summary  |  vainfo  |  clinfo -l"
+    log_ok "Step 24 complete."
+}
+
 # ==============================================
 # ROLLBACK
 # ==============================================
@@ -2502,6 +2660,9 @@ do_rollback() {
         "${PKG_LICENSE_DIR}/gpi-apps"
         "${PKG_LICENSE_DIR}/steam"
         "${PKG_ACCEPT_DIR}/steam"
+        "${PKG_USE_DIR}/40-gpu"
+        "${PKG_LICENSE_DIR}/gpi-gpu"
+        "/etc/modprobe.d/gpi-nvidia.conf"
         "/etc/sysctl.d/99-gentoo-post-install.conf"
         "/etc/sysctl.d/99-gpi-opsec.conf"
         "/etc/sysctl.d/99-gpi-logs.conf"
@@ -2621,6 +2782,8 @@ show_run_plan() {
     log_info "Firewall       : ${fw}"
     log_info "Hardening      : sysctl=${HARDEN_SYSCTL} ssh=${HARDEN_SSH} audit=${INSTALL_AUDIT} fail2ban=${INSTALL_FAIL2BAN} apparmor=${INSTALL_APPARMOR}"
     log_info "Shell/Desktop  : shell=${INSTALL_SHELL} fonts=${INSTALL_FONTS} desktop=${INSTALL_DESKTOP}"
+    local gpu_plan="off"; $INSTALL_GPU && gpu_plan="${GPU_VENDOR} (vulkan=${GPU_VULKAN} vaapi=${GPU_VAAPI} compute=${GPU_COMPUTE})"
+    log_info "GPU            : ${gpu_plan}"
     local entry num _f _d list=""
     for entry in "${STEP_REGISTRY[@]}"; do
         IFS='|' read -r num _f _d <<< "$entry"

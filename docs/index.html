@@ -127,13 +127,14 @@ nav.top .links a.gh { color: var(--text); font-weight: 600; }
       <a href="#quickstart">Quick start</a>
       <a href="#steps">Steps</a>
       <a href="#faq">FAQ</a>
+      <a href="handbook/">Handbook</a>
       <a class="gh" href="https://github.com/franckferman/gentoo-post-install">GitHub →</a>
     </span>
   </div>
 </nav>
 <header>
   <div class="wrap">
-    <span class="pill"><span class="dot"></span> v1.2.0 · 23 steps · OpenRC + systemd</span>
+    <span class="pill"><span class="dot"></span> v1.3.0 · 24 steps · OpenRC + systemd</span>
     <h1><span class="g">gentoo</span>-post-install</h1>
     <p class="tagline">Portage configuration, hardening &amp; tooling automation for Gentoo Linux - profile-based, idempotent, OpenRC <em>and</em> systemd.</p>
     <div class="badges">
@@ -147,6 +148,7 @@ nav.top .links a.gh { color: var(--text); font-weight: 600; }
     </div>
     <div class="cta-row">
       <a class="cta" href="https://github.com/franckferman/gentoo-post-install">View on GitHub →</a>
+      <a class="cta secondary" href="handbook/">Read the Handbook →</a>
       <a class="cta secondary" href="#quickstart">Quick start</a>
     </div>
   </div>
@@ -208,10 +210,10 @@ sudo ./gentoo-post-install.sh <span class="p">--profile</span> desktop <span cla
 </section>
 
 <!-- STEPS -->
-<section>
+<section id="steps">
   <div class="wrap">
     <div class="overline">Steps</div>
-    <h2>23 steps, run all or pick with <code>--steps</code></h2>
+    <h2>24 steps, run all or pick with <code>--steps</code></h2>
 
     <h3 class="grouptitle">Portage</h3>
     <div class="steps">
@@ -244,6 +246,7 @@ sudo ./gentoo-post-install.sh <span class="p">--profile</span> desktop <span cla
       <div class="step"><span class="n">15</span><span class="b"><b>Shell</b> <span>- zsh + oh-my-zsh + powerlevel10k + plugins, vim/neovim, Portage aliases</span></span></div>
       <div class="step"><span class="n">16</span><span class="b"><b>Nerd Fonts</b> <span>- patched fonts for your user + fc-cache</span></span></div>
       <div class="step"><span class="n">17</span><span class="b"><b>Desktop</b> <span>- VIDEO_CARDS/INPUT_DEVICES autodetect, Xorg/Wayland, dbus/elogind, PipeWire, NetworkManager</span></span></div>
+      <div class="step"><span class="n">24</span><span class="b"><b>GPU drivers</b> <span>- vendor-detected Mesa/Vulkan/VA-API + optional OpenCL (Intel/AMD/NVIDIA)</span></span></div>
     </div>
 
     <h3 class="grouptitle">Applications &amp; desktop environment (native)</h3>
