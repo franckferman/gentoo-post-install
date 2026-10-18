@@ -412,7 +412,9 @@ GPU / GRAPHICS DRIVERS:
     --gpu                   Install the GPU driver stack (auto-detect the vendor)
     --gpu-vendor <v>        auto | intel | amd | nvidia | nouveau | none
                             (nvidia = proprietary x11-drivers/nvidia-drivers; nouveau = FOSS)
+    --gpu-vulkan            Install the Vulkan loader / ICD (default on with --gpu)
     --no-gpu-vulkan         Do not install the Vulkan loader / ICD
+    --gpu-vaapi             Install hardware video decode (VA-API) drivers (default on)
     --no-gpu-vaapi          Do not install hardware video decode (VA-API) drivers
     --gpu-compute           Install the OpenCL/compute stack (default on with --gpu)
     --no-gpu-compute        Skip the OpenCL/compute stack (lighter; no hashcat accel)

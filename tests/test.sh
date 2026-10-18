@@ -88,7 +88,7 @@ check_eq "dedup + sort" "01 02 "          "$( parse_step_selection "2,1,2,1"  >/
 ( parse_step_selection "x" ) >/dev/null 2>&1; check_rc "invalid selection exits 2" 2 "$?"
 ( parse_step_selection "99" )    >/dev/null 2>&1; check_rc "step above range exits 2"   2 "$?"
 ( parse_step_selection "0" )     >/dev/null 2>&1; check_rc "step zero exits 2"          2 "$?"
-( parse_step_selection "24" )    >/dev/null 2>&1; check_rc "one past last step exits 2" 2 "$?"
+( parse_step_selection "25" )    >/dev/null 2>&1; check_rc "one past last step exits 2" 2 "$?"
 ( parse_step_selection "20-99" ) >/dev/null 2>&1; check_rc "range past end exits 2"     2 "$?"
 check_eq "zero-padded 08 not octal" "08 " "$( parse_step_selection "08" >/dev/null 2>&1; echo "$SELECTED_STEPS" )"
 

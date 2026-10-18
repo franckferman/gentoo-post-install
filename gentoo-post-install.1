@@ -245,6 +245,24 @@ Skip PipeWire / NetworkManager.
 .TP
 .B \-\-video\-cards \fIvalue\fR
 Set VIDEO_CARDS manually (skip autodetection).
+.SS GPU / graphics drivers
+.TP
+.B \-\-gpu
+Install the GPU driver stack (Mesa, and by default Vulkan, VA\-API and OpenCL),
+auto\-detecting the vendor.
+.TP
+.B \-\-gpu\-vendor \fIauto\fR|\fIintel\fR|\fIamd\fR|\fInvidia\fR|\fInouveau\fR|\fInone\fR
+Force the GPU vendor instead of auto\-detecting it (\fInvidia\fR = proprietary
+\fIx11\-drivers/nvidia\-drivers\fR; \fInouveau\fR = the FOSS driver). Implies \fB\-\-gpu\fR.
+.TP
+.B \-\-gpu\-vulkan ", " \-\-no\-gpu\-vulkan
+Install (default) or skip the Vulkan loader and ICD.
+.TP
+.B \-\-gpu\-vaapi ", " \-\-no\-gpu\-vaapi
+Install (default) or skip the hardware video decode (VA\-API) drivers.
+.TP
+.B \-\-gpu\-compute ", " \-\-no\-gpu\-compute
+Install (default on with \fB\-\-gpu\fR) or skip the OpenCL/compute stack.
 .SS Repositories, applications and desktop
 .TP
 .B \-\-overlay \fIlist\fR
