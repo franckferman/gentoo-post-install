@@ -24,6 +24,9 @@ RUNS=(
   "server-iptables|--profile server --firewall iptables --binhost --no-sync --hardened-malloc"
   "desktop-fw-lan|--profile desktop --firewall nftables --firewall-lan --de kde --dm sddm"
   "steps-subset|--steps 2,6,8,21 --sysctl-harden --harden-ipv6"
+  "gpu-intel|--gpu-vendor intel"
+  "gpu-nvidia|--gpu-vendor nvidia --no-gpu-compute"
+  "gpu-amd|--gpu-vendor amd --no-gpu-vaapi"
 )
 
 PASS=0; FAIL=0
