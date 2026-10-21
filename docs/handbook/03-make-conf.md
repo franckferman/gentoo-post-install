@@ -141,9 +141,13 @@ Write them to a clear, dedicated `package.use` drop-in (the script writes
 # root
 mkdir -p /etc/portage/package.use
 printf '# CPU instruction sets for this machine\n*/* %s\n' \
-  "$(cpuid2cpuflags | sed 's/^CPU_FLAGS_X86: //')" \
+  "$(cpuid2cpuflags)" \
   > /etc/portage/package.use/00cpu-flags
 ```
+
+Keep the `CPU_FLAGS_X86:` label that `cpuid2cpuflags` prints: in `package.use` it is the
+USE_EXPAND group name that assigns those tokens to `CPU_FLAGS_X86`. Strip it and the tokens
+become ordinary (mostly non-existent) USE flags and the group is never set.
 
 Why a `package.use` drop-in rather than a line in `make.conf`: it keeps the (long,
 machine-specific) list isolated and easy to regenerate, and documents its origin.

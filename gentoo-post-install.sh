@@ -341,7 +341,7 @@ BINARY PACKAGES:
 
 MAINTENANCE:
     --no-sync               Skip Portage tree sync
-    --no-world-update       Skip 'emerge -uUDN @world'
+    --no-world-update       Skip 'emerge -uDN @world'
     --no-depclean           Skip 'emerge --depclean'
     --mirrors               Pick the fastest GENTOO_MIRRORS (mirrorselect) before sync
     --merge-config          Run 'dispatch-conf' at the end (merge pending config updates)
@@ -1394,10 +1394,12 @@ step_07_kernel() {
 
 step_08_sysctl_hardening() {
     log_section "Step 08 - sysctl hardening"
-    if ! $HARDEN_SYSCTL; then
-        log_skip "sysctl hardening disabled (--sysctl-harden, or server/hardened profile)."
+    if ! $HARDEN_SYSCTL && ! $INSTALL_HARDENED_MALLOC; then
+        log_skip "sysctl hardening and hardened_malloc both disabled (--sysctl-harden / --hardened-malloc, or a profile that sets them)."
         return 0
     fi
+
+    if $HARDEN_SYSCTL; then
     {
         cat <<'EOF'
 # Managed by gentoo-post-install - network & kernel hardening.
@@ -1451,6 +1453,7 @@ EOF
         run_priv sysctl --system >/dev/null 2>&1 \
             || log_warn "sysctl --system returned non-zero (some keys may need kernel options e.g. Yama)."
     fi
+    fi  # HARDEN_SYSCTL
 
     # Optional userspace hardened allocator.
     if $INSTALL_HARDENED_MALLOC; then
