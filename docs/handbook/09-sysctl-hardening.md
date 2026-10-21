@@ -232,8 +232,8 @@ is a no-op on this kernel.
 - **Flags:** `--sysctl-harden`, `--harden-ipv6`
 - **Managed files:** `/etc/sysctl.d/99-gentoo-post-install.conf`
 - **Also touches:** adds the `sysctl` service to the OpenRC `boot` runlevel; runs
-  `sysctl --system`. (Server and hardened profiles enable `--sysctl-harden`, and the
-  hardened profile also enables `--harden-ipv6`, by default.)
+  `sysctl --system`. (The server, hardened, and opsec profiles enable `--sysctl-harden`,
+  and the hardened and opsec profiles also enable `--harden-ipv6`, by default.)
 
 ---
 [← Previous: Kernel, microcode & Secure Boot](08-kernel-microcode.md) · [Handbook index](README.md) · [Next: Firewall →](10-firewall.md)

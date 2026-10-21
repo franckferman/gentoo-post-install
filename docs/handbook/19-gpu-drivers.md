@@ -63,7 +63,8 @@ integrated GPUs, which matters for tools like hashcat.
 ```bash
 # root
 # 1. VIDEO_CARDS: amdgpu (kernel/DRM glue) + radeonsi (Mesa GL/Vulkan)
-sed -i 's/^VIDEO_CARDS=.*/VIDEO_CARDS="amdgpu radeonsi"/' /etc/portage/make.conf \
+grep -q '^VIDEO_CARDS=' /etc/portage/make.conf \
+  && sed -i 's/^VIDEO_CARDS=.*/VIDEO_CARDS="amdgpu radeonsi"/' /etc/portage/make.conf \
   || echo 'VIDEO_CARDS="amdgpu radeonsi"' >> /etc/portage/make.conf
 
 # 2. Mesa USE: Vulkan (RADV), VA-API (video), opencl (rusticl)
@@ -89,7 +90,8 @@ needs a **reboot**. Get it wrong and X may not start. Have a TTY/console ready.
 ```bash
 # root
 # 1. VIDEO_CARDS
-sed -i 's/^VIDEO_CARDS=.*/VIDEO_CARDS="nvidia"/' /etc/portage/make.conf \
+grep -q '^VIDEO_CARDS=' /etc/portage/make.conf \
+  && sed -i 's/^VIDEO_CARDS=.*/VIDEO_CARDS="nvidia"/' /etc/portage/make.conf \
   || echo 'VIDEO_CARDS="nvidia"' >> /etc/portage/make.conf
 
 # 2. Accept the license (package.license drop-in)
@@ -118,7 +120,9 @@ installing so `nouveau` is unloaded and the `nvidia` modules load cleanly.
 
 ```bash
 # root
-sed -i 's/^VIDEO_CARDS=.*/VIDEO_CARDS="nouveau"/' /etc/portage/make.conf
+grep -q '^VIDEO_CARDS=' /etc/portage/make.conf \
+  && sed -i 's/^VIDEO_CARDS=.*/VIDEO_CARDS="nouveau"/' /etc/portage/make.conf \
+  || echo 'VIDEO_CARDS="nouveau"' >> /etc/portage/make.conf
 echo 'media-libs/mesa vulkan' > /etc/portage/package.use/40-gpu   # NVK is experimental
 emerge --ask=n media-libs/mesa media-libs/vulkan-loader dev-util/vulkan-tools \
   x11-apps/mesa-progs sys-kernel/linux-firmware media-video/libva-utils

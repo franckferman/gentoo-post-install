@@ -45,7 +45,7 @@ Portage nags you until you read them with `eselect news`.
 
 ### 1. (Optional) Pick the fastest mirrors
 
-Only do this if you passed the idea of `--mirrors`; it rewrites `GENTOO_MIRRORS`.
+Do this only if you want the script's `--mirrors` behavior; it rewrites `GENTOO_MIRRORS` in `make.conf`.
 Install the tool if you do not have it, back up `make.conf` first (a bad mirror list
 is annoying to undo otherwise), then benchmark:
 

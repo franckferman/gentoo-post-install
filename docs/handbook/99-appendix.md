@@ -13,7 +13,7 @@ A profile is a bundle of sane defaults you can still override with explicit flag
 | `default` | Balanced baseline: tune `make.conf`, tooling, `@world` update. |
 | `desktop` | `default` + `-march=native`, license policy `redist` (lets firmware in), shell, fonts, desktop stack. |
 | `server` | `default` + firewall, sysctl hardening, SSH hardening, audit + logging, fail2ban. |
-| `hardened` | `server` + IPv6 hardening, SSH key-only, AppArmor, strict license default. |
+| `hardened` | `server` + IPv6 hardening, SSH key-only, AppArmor. |
 | `minimal` | Lean: tooling, CPU flags, `-march=native`, preserved-rebuild; nothing extra. |
 | `opsec` | Everything in `hardened` + hardened_malloc + attack-surface minimization + reduced logging. |
 

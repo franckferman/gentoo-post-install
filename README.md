@@ -102,7 +102,7 @@ flag then **overrides** it (defaults are applied first, your flags win).
 | Setting | `default` | `desktop` | `server` | `hardened` | `minimal` | `opsec` |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|
 | `-march=native` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| ACCEPT_LICENSE | `@FREE` | `+@BINARY-REDISTRIBUTABLE` | `@FREE` | `@FREE` | `@FREE` | `@FREE` |
+| ACCEPT_LICENSE | unchanged | `@FREE @BINARY-REDISTRIBUTABLE` | unchanged | unchanged | unchanged | unchanged |
 | Firewall | - | - | nftables | nftables | - | nftables |
 | sysctl hardening | - | - | ✓ | ✓ (+IPv6) | - | ✓ (+IPv6) |
 | SSH hardening | - | - | ✓ | ✓ (key-only) | - | ✓ (key-only) |
@@ -148,7 +148,7 @@ Run any subset with `--steps` (e.g. `--steps 1-4`, `--steps 2,6`). List them wit
 | 02 | Portage config | `MAKEOPTS`, `COMMON_FLAGS`, `EMERGE_DEFAULT_OPTS`, `FEATURES`, CPU flags |
 | 03 | Binhost | Configure Gentoo binary package host (opt-in via `--binhost`) |
 | 04 | Tooling | `gentoolkit`, `eix`, `portage-utils`, `genlop`, `mirrorselect` |
-| 05 | World update | `emerge -uUDN @world`, `@preserved-rebuild`, `--depclean` |
+| 05 | World update | `emerge -uDN @world`, `@preserved-rebuild`, `--depclean` |
 | 06 | USE flags | Write a reviewable global USE baseline for the chosen profile |
 | 07 | Kernel | Install a distribution kernel + firmware (opt-in via `--install-kernel`) |
 | 08 | sysctl hardening | Network/kernel `sysctl.d` drop-in (opt-in via `--sysctl-harden`) |
@@ -183,7 +183,7 @@ See `./gentoo-post-install.sh --help` for the full list. Highlights:
 --binhost[-uri <uri>]   Enable / point the binary package host
 --march native|none     CPU baseline (default: native)
 --jobs <N>              Force MAKEOPTS -jN
---accept-license <m>    default | free | all
+--accept-license <m>    default | free | redist | all
 --install-kernel        Install gentoo-kernel-bin
 --bootloader <b>        grub | systemd-boot | none  (installkernel USE)
 --initramfs <i>         dracut | none               (installkernel USE)
@@ -333,10 +333,10 @@ The script is a single Bash file kept **`shellcheck`-clean** and syntax-checked.
 ```bash
 make check                              # bash -n + shellcheck + unit + integration + profiles + smoke + man
 make lint SHELLCHECK=/path/to/shellcheck  # override the binary (e.g. a local build)
-make test                               # 72 unit checks (pure functions, mocked)
+make test                               # 80 unit checks (pure functions, mocked)
 make integration                        # 30 fake-root checks (real writes to a temp tree)
 make profiles                           # dry-run every profile, expect rc=0
-make smoke                              # 9 dry-run flag-combo invocations, expect rc=0
+make smoke                              # 13 dry-run flag-combo invocations, expect rc=0
 ./gentoo-post-install.sh --dry-run -y   # preview the full run, no changes
 ```
 

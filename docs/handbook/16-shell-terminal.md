@@ -215,7 +215,7 @@ ls ~/.oh-my-zsh/custom/plugins                # the three plugins
 ```
 
 Then open a **new** zsh session as the user. You should see the Powerlevel10k prompt,
-autosuggestions appear in grey as you type, and the command line colorize. On first
+autosuggestions appear in grey as you type, and syntax highlighting colorizes the command line as you go. On first
 launch, run `p10k configure` to tune the prompt (the script reminds you to do this; it
 does not run it for you, since it is interactive).
 
