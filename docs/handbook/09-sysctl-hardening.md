@@ -10,9 +10,12 @@
 `step_08_sysctl_hardening` writes a single drop-in file,
 `/etc/sysctl.d/99-gentoo-post-install.conf`, containing a curated list of IPv4,
 kernel, and filesystem tunables, then makes sure they load at boot and applies them
-now with `sysctl --system`. With `--harden-ipv6` it appends an IPv6 block. Doing it
-by hand is exactly that: drop one file in `/etc/sysctl.d/`, then reload. Nothing here
-installs packages or changes a service beyond enabling the OpenRC `sysctl` loader.
+now with `sysctl --system`. With `--harden-ipv6` it appends an IPv6 block, and with
+`--hardened-malloc` (also implied by the `opsec` profile) it additionally installs
+`sys-libs/hardened_malloc`. Doing the sysctl part by hand is exactly that: drop one
+file in `/etc/sysctl.d/`, then reload. Apart from that optional package, nothing here
+installs software or changes a service beyond enabling the OpenRC `sysctl` loader;
+hardened_malloc is covered at the end of this chapter.
 
 ## Concepts
 
@@ -209,6 +212,35 @@ sysctl net.ipv6.conf.all.accept_ra net.ipv6.conf.all.accept_redirects
 Reading a key back as the value you set means it is live. A "No such file or
 directory" error means the matching kernel feature is not built in, so that one line
 is a no-op on this kernel.
+
+## hardened_malloc (opt-in)
+
+With `--hardened-malloc` (and automatically under the `opsec` profile), step 08 also
+installs `sys-libs/hardened_malloc`, a security-focused replacement for glibc's
+allocator. It adds guard pages, randomized placement, canaries and zero-on-free,
+turning many heap-corruption bugs into an immediate crash rather than an exploitable
+condition, at a modest performance and memory cost.
+
+The script installs the package and stops there, deliberately: it does not wire it in
+globally, because preloading a different allocator can break programs that rely on
+glibc malloc internals. Install it and read the package's post-install notes, which
+print the exact library path for your version:
+
+```bash
+# root
+emerge --ask sys-libs/hardened_malloc        # note the LD_PRELOAD path it prints
+```
+
+Then load it one of two ways, least invasive first:
+
+- **Per program:** `LD_PRELOAD=<path from the ebuild notes> your-program`. Start here
+  to see whether a given program tolerates it.
+- **System-wide:** add that same path on its own line in `/etc/ld.so.preload`. It then
+  affects every dynamically linked process, so test first and keep a root shell open:
+  a broken preload can stop programs from starting. Back out by removing the line.
+
+Gentoo also packages a lighter, desktop-tuned variant; the ebuild's notes name its
+library. Prefer it when the full allocator costs too much.
 
 ## Pitfalls and rollback
 

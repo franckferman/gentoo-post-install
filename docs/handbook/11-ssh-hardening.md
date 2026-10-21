@@ -110,6 +110,26 @@ What the less obvious lines do:
   primitives (Curve25519 key exchange, ChaCha20-Poly1305 and AES-GCM ciphers,
   encrypt-then-MAC HMACs), refusing weak legacy algorithms.
 
+**Going further: restrict who may authenticate.** The drop-in above bounds *how* people
+authenticate, not *who* may. The strongest single limit is an allow-list: with
+`AllowGroups ssh-users` in the config, only members of that group may even attempt a
+login, so a leaked key or password for any other account is refused before
+authentication is tried. The script does not set this, because the right group and its
+members are site-specific; add it by hand if you want it:
+
+```bash
+# root
+groupadd ssh-users                    # the gate group
+usermod -aG ssh-users youruser        # add yourself FIRST
+printf 'AllowGroups ssh-users\n' >> /etc/ssh/sshd_config.d/99-gentoo-post-install.conf
+sshd -t && echo "config OK"           # validate before restarting (step 4)
+```
+
+**Warning:** Put your own account in the group before you restart sshd. With
+`AllowGroups` set and your user not a member, the next connection is refused, which on
+a remote box is a lockout. `AllowUsers <name>` is the per-user equivalent if you would
+rather not manage a group.
+
 ### 3. Ensure the main config includes the drop-in
 
 Check for the `Include` line and add it only if it is missing:
