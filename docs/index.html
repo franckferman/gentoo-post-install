@@ -203,6 +203,7 @@ sudo ./gentoo-post-install.sh <span class="p">--profile</span> desktop <span cla
           <tr><td><code>server</code></td><td>native</td><td>nftables</td><td>sysctl + SSH + audit + fail2ban</td><td>-</td><td class="wrap-ok">Headless server</td></tr>
           <tr><td><code>hardened</code></td><td>native</td><td>nftables</td><td>+ IPv6 + SSH key-only + AppArmor</td><td>-</td><td class="wrap-ok">Security-focused</td></tr>
           <tr><td><code>minimal</code></td><td>native</td><td>-</td><td>-</td><td>-</td><td class="wrap-ok">Lean essentials</td></tr>
+          <tr><td><code>opsec</code></td><td>native</td><td>nftables</td><td>+ surface/log min + hardened_malloc</td><td>-</td><td class="wrap-ok">Maximum hardening</td></tr>
         </tbody>
       </table>
     </div>
@@ -223,7 +224,6 @@ sudo ./gentoo-post-install.sh <span class="p">--profile</span> desktop <span cla
       <div class="step"><span class="n">04</span><span class="b"><b>Tooling</b> <span>- gentoolkit, eix, portage-utils, genlop, mirrorselect</span></span></div>
       <div class="step"><span class="n">05</span><span class="b"><b>World update</b> <span>- @world update, preserved-rebuild, depclean</span></span></div>
       <div class="step"><span class="n">06</span><span class="b"><b>USE flags</b> <span>- reviewable global USE baseline per profile</span></span></div>
-      <div class="step"><span class="n">07</span><span class="b"><b>Kernel</b> <span>- distribution kernel + firmware (opt-in)</span></span></div>
     </div>
 
     <h3 class="grouptitle">Hardening</h3>
@@ -307,7 +307,7 @@ sudo ./gentoo-post-install.sh <span class="p">--apps-profile</span> gaming <span
   <div class="wrap">
     <div class="overline">Options</div>
     <h2>Key flags</h2>
-<pre><span class="p">--profile</span> &lt;name&gt;        default | desktop | server | hardened | minimal
+<pre><span class="p">--profile</span> &lt;name&gt;        default | desktop | server | hardened | minimal | opsec
 <span class="p">--dry-run</span>, <span class="p">-n</span>           print actions without executing them
 <span class="p">--yes</span>, <span class="p">-y</span>               non-interactive
 <span class="p">--steps</span> &lt;list&gt;          run only selected steps (1,2,5 or 1-4)

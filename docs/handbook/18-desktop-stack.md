@@ -161,15 +161,13 @@ rc-update add NetworkManager default
 rc-service NetworkManager start
 ```
 
-### 7. Rebuild for the new `VIDEO_CARDS`
+### 7. Leave the rebuild to the GPU chapter
 
 Changing `VIDEO_CARDS` means the graphics packages must be rebuilt to pick up the
-drivers. Do this after you install the actual driver stack in chapter 19:
-
-```bash
-# root
-emerge --ask=n --update --deep --newuse @world
-```
+drivers, but do not run that rebuild here. The driver USE flags (Vulkan, VA-API,
+OpenCL) are set in [GPU drivers](19-gpu-drivers.md), so the single
+`emerge --update --deep --newuse @world` happens once, there, after both the card
+token and the USE flags are in place. Running it now would rebuild twice.
 
 ## Verify
 

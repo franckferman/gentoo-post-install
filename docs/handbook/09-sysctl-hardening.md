@@ -38,6 +38,13 @@ The knobs fall into three groups:
 - **Filesystem link/FIFO protections.** These close classic time-of-check/time-of-use
   tricks in world-writable directories like `/tmp`.
 
+This set deliberately leaves packet forwarding (`net.ipv4.ip_forward`,
+`net.ipv6.conf.all.forwarding`) alone. A host that is not a router should not forward,
+but that is enforced one layer up: the [firewall](10-firewall.md) installs a `forward`
+chain with a default `drop` policy, so forwarding is blocked whether or not the sysctl
+is set. If you run without a firewall and are not routing, add `net.ipv4.ip_forward = 0`
+(and the IPv6 twin) to this file yourself.
+
 Some knobs depend on kernel config (for example `kernel.yama.ptrace_scope` needs
 `CONFIG_SECURITY_YAMA`). If a key is missing, `sysctl --system` prints an error for
 that line and moves on; that is why the script treats a non-zero exit as a warning,

@@ -326,6 +326,15 @@ only by Microsoft's keys, and dropping them can leave a device (or a dual-boot O
 unbootable. Why re-sign after updates: a new kernel image is unsigned until you sign
 it, and Secure Boot will refuse to load it.
 
+What this does not cover is the initramfs. `sbctl` here signs the loader and the kernel,
+but a separate initramfs is loaded unverified, so with GRUB the measured chain stops at
+the kernel and an attacker who can rewrite the initramfs is not caught. The clean way to
+close that gap is a Unified Kernel Image (UKI): the kernel, the initramfs, and the kernel
+command line are bundled into one PE binary that you sign as a whole and boot directly
+with systemd-boot or the EFI stub. If you need Secure Boot to attest the initramfs too,
+build a UKI (on the installer side the `installkernel` plus `uki` USE flags wire this)
+rather than signing a kernel next to a loose initramfs.
+
 ## Verify
 
 ```bash

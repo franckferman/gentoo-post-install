@@ -19,9 +19,12 @@ do (or understand) it yourself.
   (`make.conf`, USE flags) is a first-class concern, not an afterthought.
 - **Explicit over implicit.** Nothing is enabled behind your back. You choose your
   init system, your drivers (`VIDEO_CARDS`), your features (USE flags), your kernel.
-- **Composable config.** Portage reads small drop-in files under `/etc/portage/`
-  (`package.use/`, `package.accept_keywords/`, `package.license/`). The script, and
-  this handbook, prefer dedicated, commented drop-ins over one giant file, so each
+- **Composable config.** A *drop-in* is a small, single-purpose config file placed in a
+  `.d/` directory that the system reads alongside (and after) the main config, so each
+  change is isolated and reversible by deleting one file. Portage works this way under
+  `/etc/portage/` (`package.use/`, `package.accept_keywords/`, `package.license/`), and
+  so do `sysctl.d/`, `sshd_config.d/` and `jail.d/` later in this handbook. The script,
+  and this handbook, prefer dedicated, commented drop-ins over one giant file, so each
   change documents itself and is easy to revert.
 - **The wiki is authoritative.** When in doubt, the
   [Gentoo Wiki](https://wiki.gentoo.org/) and the

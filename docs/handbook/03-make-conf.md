@@ -21,8 +21,8 @@ directly decides how fast builds run and how optimized the result is.
   job, so parallelism is bounded by RAM, not just cores.
 - **`COMMON_FLAGS`** feeds the compiler. `-march=native` tells GCC to target *this
   exact CPU* (enabling its instruction sets); `-O2 -pipe` is the safe, standard
-  optimization level. `-O3` is not generally recommended on Gentoo (larger, sometimes
-  slower, occasionally miscompiles).
+  optimization level. `-O3` is not recommended on Gentoo: it produces larger code, is
+  sometimes slower, and occasionally miscompiles packages that upstream only tests at `-O2`.
 - **`FEATURES`** toggles Portage behaviors (parallel fetch/install, build candy, binary
   packages, sandboxing).
 - **`ACCEPT_LICENSE`** decides which software licenses Portage will install without
